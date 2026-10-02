@@ -1,0 +1,29 @@
+{
+  "id": "veraimobiliaria",
+  "label": "Vera Imobiliária",
+  "filters": {
+    "type": "object",
+    "properties": {
+      "city_id": {"type": "integer", "minimum": 1, "title": "Cidade", "description": "ID numérico da cidade no cadastro Vera."},
+      "property_type": {"type": "integer", "enum": [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 16, 17, 18, 21], "title": "Tipo de imóvel", "description": "ID numérico da categoria de imóvel do portal."},
+      "neighborhood_id": {"type": "integer", "minimum": 1, "title": "Bairro", "description": "ID numérico do bairro dentro da cidade selecionada."},
+      "bedrooms": {"type": "integer", "minimum": 0, "title": "Quartos", "description": "Quantidade exata de quartos, em contagem de unidades."},
+      "min_price": {"type": "integer", "minimum": 0, "title": "Aluguel mínimo", "description": "Limite mensal mínimo em reais (BRL)."},
+      "max_price": {"type": "integer", "minimum": 0, "title": "Aluguel máximo", "description": "Limite mensal máximo em reais (BRL)."},
+      "page": {"type": "integer", "minimum": 1, "title": "Página", "description": "Página dos resultados, começando em 1."}
+    },
+    "additionalProperties": false
+  },
+  "reference": {"type": "string", "pattern": "^[0-9]+$", "minLength": 1, "maxLength": 32, "description": "ID numérico do imóvel para consulta de detalhes."},
+  "facets": {
+    "type": "object",
+    "oneOf": [
+      {"type": "object", "properties": {"selector": {"const": "cities", "title": "Cidades", "description": "Lista as cidades disponíveis no formulário de busca."}}, "required": ["selector"], "additionalProperties": false},
+      {"type": "object", "properties": {"selector": {"const": "neighborhoods", "title": "Bairros", "description": "Lista bairros da cidade selecionada."}, "city_id": {"type": "integer", "minimum": 1, "title": "Cidade", "description": "ID numérico obrigatório da cidade."}, "transaction_type": {"const": 1, "title": "Negócio", "description": "Fixado em 1 pela fonte para aluguel."}, "property_type": {"type": "integer", "minimum": 0, "title": "Tipo de imóvel", "description": "ID numérico opcional da categoria de imóvel."}}, "required": ["selector", "city_id"], "additionalProperties": false},
+      {"type": "object", "properties": {"selector": {"const": "all", "title": "Cidades e bairros", "description": "Lista cidades e bairros para a cidade informada."}, "city_id": {"type": "integer", "minimum": 1, "title": "Cidade", "description": "ID numérico obrigatório da cidade para listar bairros."}, "transaction_type": {"const": 1, "title": "Negócio", "description": "Fixado em 1 pela fonte para aluguel."}, "property_type": {"type": "integer", "minimum": 0, "title": "Tipo de imóvel", "description": "ID numérico opcional da categoria de imóvel."}}, "required": ["selector", "city_id"], "additionalProperties": false}
+    ]
+  },
+  "limitations": ["A busca não faz pós-filtragem de quartos: o valor selecionado é enviado como filtro exato à fonte.", "O tipo de negócio é fixo em aluguel (ID 1), inclusive no catálogo de bairros."],
+  "public_hosts": ["veraimobiliaria.com.br", "www.veraimobiliaria.com.br"],
+  "detail_path_pattern": "^/imovel/[0-9]+(?:\\.html|/[^/?#]+\\.html)$"
+}

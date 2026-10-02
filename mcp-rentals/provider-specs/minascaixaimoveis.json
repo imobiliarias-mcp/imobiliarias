@@ -1,0 +1,44 @@
+{
+  "id": "minascaixaimoveis",
+  "label": "Minas Caixa Imóveis",
+  "filters": {
+    "type": "object",
+    "properties": {
+      "city": {"type": "string", "minLength": 1, "description": "Slug da cidade usada na busca."},
+      "bedrooms": {"type": "integer", "minimum": 0, "description": "Quantidade de quartos; zero mantém qualquer quantidade."},
+      "parking_spaces": {"type": "integer", "minimum": 0, "description": "Quantidade de vagas de garagem; zero mantém qualquer quantidade."},
+      "min_price": {"type": "number", "minimum": 0, "description": "Preço mínimo mensal de aluguel em reais (BRL)."},
+      "max_price": {"type": "number", "minimum": 0, "description": "Preço máximo mensal de aluguel em reais (BRL)."},
+      "sort": {"type": "string", "enum": ["", "valorasc", "valordesc"], "description": "Ordenação por valor; vazio usa a ordem padrão."},
+      "page": {"type": "integer", "minimum": 1, "description": "Página de resultados, começando em 1."}
+    },
+    "additionalProperties": false
+  },
+  "reference": {"type": "string", "pattern": "^[1-9][0-9]*$", "description": "Código numérico positivo do imóvel (campo codigo da API)."},
+  "facets": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {"selector": {"const": "cities", "description": "Lista de cidades disponíveis."}},
+        "required": ["selector"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "selector": {"const": "neighborhoods", "description": "Lista de bairros da cidade informada."},
+          "city": {"type": "string", "minLength": 1, "description": "Slug obrigatório da cidade para listar seus bairros."}
+        },
+        "required": ["selector", "city"],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "limitations": [
+    "A finalidade de busca é sempre aluguel; filtros por bairro e tipo de imóvel não são aplicados pelo construtor de busca.",
+    "Facetas exigem seletor explícito; bairros exigem o slug da cidade.",
+    "A API retorna campos brutos do imóvel em detalhe e uma lista resumida na busca."
+  ],
+  "public_hosts": ["www.minascaixaimoveis.com.br"],
+  "detail_path_pattern": "^/detalhe-imovel/[1-9][0-9]*$"
+}

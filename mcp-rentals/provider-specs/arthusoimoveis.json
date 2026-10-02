@@ -1,0 +1,52 @@
+{
+  "id": "arthusoimoveis",
+  "label": "Arthuso Imóveis",
+  "filters": {
+    "type": "object",
+    "properties": {
+      "city": {"type": "string", "minLength": 1, "maxLength": 2048, "description": "Slug da cidade para location[0]."},
+      "neighborhood": {"type": "string", "minLength": 1, "maxLength": 2048, "description": "Slug do bairro para areas[0]."},
+      "property_type": {"type": "string", "minLength": 1, "maxLength": 2048, "description": "Slug do tipo de imóvel."},
+      "bedrooms": {"type": "integer", "minimum": 0, "title": "Quartos", "description": "Quantidade exata de quartos do imóvel."},
+      "bathrooms": {"type": "integer", "minimum": 0, "title": "Banheiros", "description": "Quantidade exata de banheiros do imóvel."},
+      "min_price": {"type": "number", "minimum": 0, "title": "Aluguel mensal mínimo", "description": "Preço mensal mínimo em reais (BRL)."},
+      "max_price": {"type": "number", "minimum": 0, "title": "Aluguel mensal máximo", "description": "Preço mensal máximo em reais (BRL)."},
+      "property_code": {"type": "string", "minLength": 1, "maxLength": 2048, "description": "Código de referência do imóvel."},
+      "keyword": {"type": "string", "minLength": 1, "maxLength": 2048, "description": "Palavra-chave da busca."},
+      "sort_by": {"type": "string", "enum": ["a_price", "d_price", "d_date", "a_date"], "title": "Ordenar por", "description": "Critério do portal: a_price (menor preço), d_price (maior preço), d_date (mais recentes) ou a_date (mais antigos)."},
+      "page": {"type": "integer", "minimum": 1, "title": "Página", "description": "Número da página dos resultados, começando em 1."}
+    },
+    "additionalProperties": false
+  },
+  "reference": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "kind": {"type": "string", "const": "id", "enum": ["id"], "description": "Tipo do identificador: ID numérico."},
+          "value": {"type": "string", "pattern": "^[1-9][0-9]*$", "description": "ID numérico positivo do imóvel."}
+        },
+        "required": ["kind", "value"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {"type": "string", "const": "slug", "enum": ["slug"], "description": "Tipo do identificador: slug público."},
+          "value": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*$", "description": "Slug público do imóvel."}
+        },
+        "required": ["kind", "value"],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "facets": {
+    "type": "object",
+    "properties": {"selector": {"type": "string", "enum": ["all", "cities", "neighborhoods", "property_types"], "maxLength": 2048, "description": "Taxonomia a consultar."}},
+    "required": ["selector"],
+    "additionalProperties": false
+  },
+  "limitations": ["Search is fixed to rentals and the portal's 9-listing page size.", "Prices are sent as integer reais; the API does not expose additional search facets."],
+  "public_hosts": ["arthusoimoveis.com.br"],
+  "detail_path_pattern": "^/(?:property|imovel)/[A-Za-z0-9_-]+/?$"
+}

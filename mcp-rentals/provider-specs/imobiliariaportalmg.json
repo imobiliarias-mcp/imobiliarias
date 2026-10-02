@@ -1,0 +1,33 @@
+{
+  "id": "imobiliariaportalmg",
+  "label": "Portal Imóveis MG",
+  "filters": {
+    "type": "object",
+    "properties": {
+      "city_id": {"type": "string", "title": "Município", "description": "ID numérico Orangeimob do município; por exemplo, 2371 para Timóteo.", "pattern": "^[0-9]{1,12}$"},
+      "neighborhood": {"type": "string", "title": "Bairro", "description": "Nome do bairro conforme o catálogo de localização.", "minLength": 1, "maxLength": 100},
+      "category_id": {"type": "string", "title": "Categoria", "description": "ID da categoria de imóvel usado pelo catálogo do portal.", "minLength": 1, "maxLength": 32},
+      "subcategory_id": {"type": "string", "title": "Subcategoria", "description": "ID do subtipo de imóvel usado pelo catálogo do portal.", "minLength": 1, "maxLength": 32},
+      "bedrooms": {"type": "integer", "title": "Quartos", "description": "Número mínimo de dormitórios; zero omite o filtro.", "minimum": 0, "maximum": 5},
+      "suites": {"type": "integer", "title": "Suítes", "description": "Número mínimo de suítes; zero omite o filtro.", "minimum": 0, "maximum": 5},
+      "garages": {"type": "integer", "title": "Vagas", "description": "Número mínimo de garagens; zero omite o filtro.", "minimum": 0, "maximum": 5},
+      "reference": {"type": "string", "title": "Referência na busca", "description": "Código de referência aplicado como filtro de busca.", "minLength": 1, "maxLength": 100},
+      "minimum_price": {"type": "number", "title": "Aluguel mínimo (R$)", "description": "Limite inferior mensal em reais.", "minimum": 0},
+      "maximum_price": {"type": "number", "title": "Aluguel máximo (R$)", "description": "Limite superior mensal em reais.", "minimum": 0},
+      "page": {"type": "integer", "title": "Página", "description": "Número da página, começando em 1; convertido para offset da origem.", "minimum": 1},
+      "page_size": {"type": "integer", "title": "Resultados por página", "description": "Quantidade por página aceita pelo portal.", "enum": [10, 20, 30]},
+      "sort_order": {"type": "string", "title": "Ordenação", "description": "Código de ordenação Orangeimob.", "enum": ["menor_valor", "maior_valor", "recentes"]}
+    },
+    "additionalProperties": false
+  },
+  "reference": {"type": "string", "title": "Código do imóvel", "description": "ID numérico usado para abrir imoveis_detalhes.php?id=.", "minLength": 1, "maxLength": 20, "pattern": "^[0-9]{1,20}$"},
+  "facets": {
+    "type": "object",
+    "properties": {"selector": {"const": "all", "type": "string", "title": "Todas as facetas", "description": "Solicita municípios, bairros e categorias disponíveis no catálogo."}},
+    "required": ["selector"],
+    "additionalProperties": false
+  },
+  "limitations": ["A busca é fixa para locação; transações de venda não são aceitas.", "O catálogo de facetas é global, não recebe um filtro de município.", "Paginação aceita somente 10, 20 ou 30 resultados por página."],
+  "public_hosts": ["www.imobiliariaportalmg.com.br"],
+  "detail_path_pattern": "^/imoveis_detalhes\\.php\\?id=[0-9]{1,20}$"
+}

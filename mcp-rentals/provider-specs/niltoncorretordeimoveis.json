@@ -1,0 +1,33 @@
+{
+  "id": "niltoncorretordeimoveis",
+  "label": "Nilton Corretor de Imóveis",
+  "filters": {
+    "type": "object",
+    "properties": {
+      "city": {"type": "string", "default": "timoteo", "title": "Cidade", "description": "Slug da cidade usada na busca de imóveis para aluguel."},
+      "property_type": {"type": "string", "enum": ["todos", "apartamento", "casa", "flat", "kitnet", "loja", "lote", "sala-comercial", "cobertura", "sitio", "chacara", "galpao", "casa-geminada", "barracao"], "title": "Tipo de imóvel", "description": "Categoria do imóvel conforme o catálogo do portal."},
+      "neighborhood_ids": {"type": "array", "items": {"type": "string", "pattern": "^[0-9]+$"}, "title": "Bairros", "description": "IDs numéricos dos bairros incluídos na busca."},
+      "bedrooms": {"type": "integer", "minimum": 1, "maximum": 5, "title": "Quartos", "description": "Quantidade de quartos; de 1 a 5."},
+      "min_bedrooms": {"type": "boolean", "title": "Mínimo de quartos", "description": "Quando verdadeiro, busca imóveis com esta quantidade ou mais."},
+      "suites": {"type": "integer", "minimum": 1, "maximum": 5, "title": "Suítes", "description": "Quantidade de suítes; de 1 a 5."},
+      "min_suites": {"type": "boolean", "title": "Mínimo de suítes", "description": "Quando verdadeiro, busca imóveis com esta quantidade ou mais."},
+      "bathrooms": {"type": "integer", "minimum": 1, "maximum": 5, "title": "Banheiros", "description": "Quantidade de banheiros; de 1 a 5."},
+      "min_bathrooms": {"type": "boolean", "title": "Mínimo de banheiros", "description": "Quando verdadeiro, busca imóveis com esta quantidade ou mais."},
+      "parking_spaces": {"type": "integer", "minimum": 1, "maximum": 5, "title": "Vagas", "description": "Quantidade de vagas de estacionamento; de 1 a 5."},
+      "min_parking_spaces": {"type": "boolean", "title": "Mínimo de vagas", "description": "Quando verdadeiro, busca imóveis com esta quantidade ou mais."},
+      "min_price": {"type": "integer", "minimum": 0, "title": "Aluguel mínimo", "description": "Valor mínimo mensal em reais (BRL)."},
+      "max_price": {"type": "integer", "minimum": 0, "title": "Aluguel máximo", "description": "Valor máximo mensal em reais (BRL)."},
+      "min_area": {"type": "integer", "minimum": 0, "title": "Área mínima", "description": "Área mínima em metros quadrados (m²)."},
+      "max_area": {"type": "integer", "minimum": 0, "title": "Área máxima", "description": "Área máxima em metros quadrados (m²)."},
+      "sort": {"type": "string", "enum": ["", "menor_valor", "maior_valor", "recentes"], "title": "Ordenação", "description": "Ordena por preço crescente, preço decrescente ou imóveis recentes."},
+      "page": {"type": "integer", "minimum": 1, "title": "Página", "description": "Número da página de resultados, começando em 1."},
+      "reference_code": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$", "minLength": 1, "maxLength": 128, "title": "Referência", "description": "Código de referência exato do imóvel, aplicado à busca."}
+    },
+    "additionalProperties": false
+  },
+  "reference": {"type": "string", "pattern": "^[1-9][0-9]*$", "minLength": 1, "maxLength": 32, "description": "ID numérico positivo presente no caminho público /imovel/{id}, usado para consulta de detalhes; o código de referência comercial não substitui esse ID."},
+  "facets": {"type": "object", "properties": {"selector": {"const": "locations", "title": "Catálogo de locais", "description": "Retorna cidades e bairros disponíveis no portal."}}, "required": ["selector"], "additionalProperties": false},
+  "limitations": ["O portal publica cidades e bairros no HTML da busca; não há catálogo separado de tipos de imóveis."],
+  "public_hosts": ["niltoncorretordeimoveis.com.br", "www.niltoncorretordeimoveis.com.br"],
+  "detail_path_pattern": "^/imovel/[0-9]+/?$"
+}

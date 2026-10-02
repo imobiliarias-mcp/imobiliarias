@@ -1,0 +1,38 @@
+services:
+  rentals:
+    image: mcp-rentals:dev
+    build:
+      context: .staging
+      dockerfile: Dockerfile
+    init: true
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
+      SOURCES_ROOT: /opt/sources
+      PYTHON_ENVIRONMENTS_ROOT: /opt/environments
+      PYTHONPATH: /opt/mcp-rentals/python
+    healthcheck:
+      test: ["CMD", "node", "dist/server/src/main.js", "--health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: "no"
+
+  rentals-http:
+    extends:
+      service: rentals
+    profiles: [http]
+    command: ["--http"]
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
+      SOURCES_ROOT: /opt/sources
+      PYTHON_ENVIRONMENTS_ROOT: /opt/environments
+      PYTHONPATH: /opt/mcp-rentals/python
+      RENTAL_HTTP_BIND: 0.0.0.0
+      RENTAL_HTTP_PORT: "3001"
+      RENTAL_HTTP_ORIGIN_PORT: "${MCP_HTTP_PORT:-3000}"
+    ports:
+      - "127.0.0.1:${MCP_HTTP_PORT:-3000}:3001"

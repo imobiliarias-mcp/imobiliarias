@@ -1,0 +1,30 @@
+{
+  "id": "imovelweb",
+  "label": "Imovelweb",
+  "filters": {
+    "type": "object",
+    "properties": {
+      "city": {"type": "string", "minLength": 1, "description": "Cidade da busca, como timoteo."},
+      "neighborhood": {"type": "string", "minLength": 1, "description": "Bairro da cidade informada."},
+      "property_type": {"type": "string", "enum": ["imoveis", "apartamentos", "casas", "comerciais", "terrenos", "rurais"], "description": "Categoria de imóvel disponível no portal."},
+      "bedrooms": {"type": "integer", "minimum": 0, "description": "Quantidade exata de quartos."},
+      "sort": {"type": "string", "enum": ["menor_preco", "preco_menor", "maior_preco", "preco_maior", "recentes", "publicado_maior", "visitas"], "description": "Ordenação publicada pelo portal."},
+      "page": {"type": "integer", "minimum": 1, "description": "Página de resultados, começando em 1."}
+    },
+    "additionalProperties": false
+  },
+  "reference": {"type": "string", "pattern": "^[0-9]+$", "description": "Código numérico do anúncio Imovelweb."},
+  "facets": {
+    "type": "object",
+    "properties": {"selector": {"type": "string", "enum": ["all", "neighborhoods", "property_types", "sort_orders"], "description": "Grupo de filtros a consultar."}},
+    "required": ["selector"],
+    "additionalProperties": false
+  },
+  "limitations": [
+    "Busca restrita a locações; o portal não aceita limites mínimo ou máximo de preço na rota canônica.",
+    "Quartos são filtrados por quantidade exata; o portal não expõe filtros de banheiros.",
+    "Facetas são extraídas da página pública base de locações e não incluem uma lista de cidades."
+  ],
+  "public_hosts": ["www.imovelweb.com.br", "imovelweb.com.br"],
+  "detail_path_pattern": "^/propriedades/[^/?#]+-[0-9]+\\.html$"
+}

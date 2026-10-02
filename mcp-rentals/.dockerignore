@@ -1,0 +1,15 @@
+**/.env
+**/.env.*
+**/.git
+**/.remember
+**/.ruff_cache
+**/.pytest_cache
+**/.venv
+**/__pycache__
+**/node_modules
+**/tests
+**/tmp
+.git
+.env
+.staging
+.mcp-rentals-build-context
