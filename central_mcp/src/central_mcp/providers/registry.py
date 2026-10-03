@@ -36,9 +36,9 @@ class ProviderRegistry:
         self._instances: dict[str, Any] = {}
 
     @classmethod
-    def create_default(cls) -> "ProviderRegistry":
+    def create_default(cls, repo_root: Path | None = None) -> "ProviderRegistry":
         """Factory constructor instantiating the default provider registry."""
-        return cls()
+        return cls(repo_root=repo_root)
 
     def all_provider_ids(self) -> tuple[str, ...]:
         """Return tuple of all registered provider identifiers."""

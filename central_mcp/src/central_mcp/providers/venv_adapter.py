@@ -80,4 +80,11 @@ class LocalVenvAdapter:
         if proc.returncode != 0:
             error_msg = proc.stderr.strip() or f"Process failed with code {proc.returncode}"
             return {"error": error_msg, "status": "error"}
-        return json.loads(proc.stdout)
+        return self._decode_output(proc.stdout)
+
+    def _decode_output(self, raw_output: str) -> dict[str, Any]:
+        """Safely parse JSON stdout or return error representation."""
+        try:
+            return json.loads(raw_output)
+        except (json.JSONDecodeError, ValueError) as exc:
+            return {"error": f"Invalid JSON response: {exc}", "raw": raw_output}
