@@ -1,5 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {"noEmit": false, "outDir": "dist/server", "rootDir": ".", "declaration": true},
-  "include": ["src/**/*.ts"], "exclude": ["ui", "tests", "scripts", "vite.config.ts"]
-}
