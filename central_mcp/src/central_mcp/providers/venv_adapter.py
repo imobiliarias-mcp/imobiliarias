@@ -40,7 +40,38 @@ class LocalVenvAdapter:
         page: int = 1,
     ) -> dict[str, Any]:
         """Execute search_rentals tool inside the worker process."""
-        kwargs = {
+        kwargs = self._build_search_kwargs(
+            city, min_price, max_price, bedrooms, property_type, page
+        )
+        return self._invoke("search_rentals", kwargs)
+
+    def _build_search_kwargs(
+        self,
+        city: str,
+        min_price: float,
+        max_price: float,
+        bedrooms: int,
+        property_type: str,
+        page: int,
+    ) -> dict[str, Any]:
+        if self._provider_name == "marcioimoveis":
+            return {
+                "locations": [city] if city else None,
+                "min_price": min_price,
+                "max_price": max_price,
+                "bedrooms": bedrooms,
+                "property_type": property_type,
+                "page": page,
+            }
+        if self._provider_name == "imobiliariaportalmg":
+            return {
+                "city_id": city,
+                "min_price": min_price,
+                "max_price": max_price,
+                "bedrooms": bedrooms,
+                "page": page,
+            }
+        return {
             "city": city,
             "min_price": min_price,
             "max_price": max_price,
@@ -48,7 +79,6 @@ class LocalVenvAdapter:
             "property_type": property_type,
             "page": page,
         }
-        return self._invoke("search_rentals", kwargs)
 
     def get_property_detail(self, property_code: str) -> dict[str, Any]:
         """Execute get_property_detail tool inside the worker process."""

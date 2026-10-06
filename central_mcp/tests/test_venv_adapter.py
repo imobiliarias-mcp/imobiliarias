@@ -114,3 +114,32 @@ def test_two_agencies_isolated_scripts(tmp_path: Path):
 
     assert adapter1.get_provider_info()["agency"] == 1
     assert adapter2.get_provider_info()["agency"] == 2
+
+
+def test_adapter_maps_marcio_locations(tmp_path: Path):
+    agency = tmp_path / "marcioimoveis"
+    _setup_fake_agency(
+        agency,
+        "MarcioAdapter",
+        "    def search_rentals(self, locations=None, **kwargs):\n"
+        "        return {'locations': locations, 'kwargs': kwargs}\n",
+    )
+    adapter = LocalVenvAdapter(agency, "MarcioAdapter", provider_name="marcioimoveis")
+    res = adapter.search_rentals(city="Timóteo", bedrooms=2)
+    assert res["locations"] == ["Timóteo"]
+    assert res["kwargs"]["bedrooms"] == 2
+
+
+def test_adapter_maps_portalmg_city_id(tmp_path: Path):
+    agency = tmp_path / "imobiliariaportalmg"
+    _setup_fake_agency(
+        agency,
+        "PortalMGAdapter",
+        "    def search_rentals(self, city_id='', **kwargs):\n"
+        "        return {'city_id': city_id, 'kwargs': kwargs}\n",
+    )
+    adapter = LocalVenvAdapter(agency, "PortalMGAdapter", provider_name="imobiliariaportalmg")
+    res = adapter.search_rentals(city="2371", bedrooms=2)
+    assert res["city_id"] == "2371"
+    assert res["kwargs"]["bedrooms"] == 2
+

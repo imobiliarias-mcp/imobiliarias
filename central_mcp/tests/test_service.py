@@ -159,3 +159,17 @@ async def test_service_unsupported_filter_raises_error():
             max_price=1000.0,
         )
     assert exc_info.value.code == ProviderErrorCode.UNSUPPORTED_FILTER
+
+
+@pytest.mark.asyncio
+async def test_service_detail_rejects_ssrf_urls():
+    registry = ProviderRegistry.create_default()
+    registry.register("vivareal", MockAdapter("vivareal"))
+    service = RentalService(registry=registry)
+
+    with pytest.raises(ValueError, match="Property code cannot be a URL"):
+        await service.detail(provider="vivareal", property_code="http://127.0.0.1:8000/internal")
+
+    with pytest.raises(ValueError, match="Property code contains invalid characters"):
+        await service.detail(provider="vivareal", property_code="code with spaces")
+

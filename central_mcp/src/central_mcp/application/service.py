@@ -60,6 +60,15 @@ def _extract_price(item: dict[str, Any]) -> Any:
     return None
 
 
+def _validate_property_code(code: str) -> None:
+    if not code or not code.strip():
+        raise ValueError("Property code cannot be empty")
+    if code.startswith(("http://", "https://", "//", "ftp://")):
+        raise ValueError("Property code cannot be a URL")
+    if any(c in code for c in (" ", "\t", "\n", "\r", "<", ">", '"', "'")):
+        raise ValueError("Property code contains invalid characters")
+
+
 class RentalService:
     """Facade orchestrating queries across rental provider adapters."""
 
@@ -104,6 +113,7 @@ class RentalService:
         return {"status": "ok", "provider": provider, "count": len(projected), "results": projected[:limit], "listings": projected[:limit]}
 
     async def detail(self, provider: str, property_code: str) -> dict[str, Any]:
+        _validate_property_code(property_code)
         adapter = self._registry.get(provider)
         async with self._semaphore, self._throttle.acquire(provider):
             return await asyncio.to_thread(adapter.get_property_detail, property_code)
