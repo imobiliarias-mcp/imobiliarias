@@ -1,0 +1,14 @@
+**/.git
+**/.gitmodules
+**/.venv
+**/tmp
+**/tests
+**/docs
+**/.env
+**/.env.*
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.superpowers
+**/.playwright-mcp
