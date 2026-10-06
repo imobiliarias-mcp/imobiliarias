@@ -1,5 +1,6 @@
 """Provider Registry for Central Rental Research MCP."""
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,9 @@ class ProviderRegistry:
 
     def __init__(self, repo_root: Path | None = None) -> None:
         """Initialize registry with root directory and adapter cache."""
-        self._root = repo_root or Path(__file__).resolve().parent.parent.parent.parent.parent
+        env_root = os.environ.get("CENTRAL_MCP_REPO_ROOT")
+        default_root = Path(env_root) if env_root else Path(__file__).resolve().parents[4]
+        self._root = repo_root or default_root
         self._instances: dict[str, Any] = {}
 
     @classmethod

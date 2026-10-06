@@ -1,0 +1,19 @@
+services:
+  central-mcp:
+    build:
+      context: ..
+      dockerfile: central_mcp/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=America/Sao_Paulo
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - CENTRAL_MCP_HOST=0.0.0.0
+      - CENTRAL_MCP_PORT=8000
+    healthcheck:
+      test: ["CMD", "/usr/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
