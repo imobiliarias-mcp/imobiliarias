@@ -43,7 +43,11 @@ class ProviderRegistry:
 
     def all_provider_ids(self) -> tuple[str, ...]:
         """Return tuple of all registered provider identifiers."""
-        return tuple(PROVIDER_MAP.keys())
+        keys = list(PROVIDER_MAP.keys())
+        for k in self._instances:
+            if k not in keys:
+                keys.append(k)
+        return tuple(keys)
 
     def register(self, provider_id: str, adapter: Any) -> None:
         """Explicitly register or mock an adapter instance."""

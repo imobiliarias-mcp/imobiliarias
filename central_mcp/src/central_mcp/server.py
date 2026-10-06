@@ -1,5 +1,7 @@
 """Central Rental Research Model Context Protocol (MCP) server."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
@@ -10,7 +12,7 @@ from central_mcp.application.service import RentalService
 def create_mcp_server(service: RentalService | None = None) -> MCPServer:
     """Create and configure the central MCP server with registered rental research tools."""
     app_service = service or RentalService()
-    server = MCPServer(name="Central Rental Research MCP", version="0.1.0")
+    server = MCPServer(name="Central Rental Research MCP", version="0.2.0")
     _register_catalog_tool(server, app_service)
     _register_search_tools(server, app_service)
     _register_detail_and_facets_tools(server, app_service)
@@ -22,7 +24,7 @@ def _register_catalog_tool(server: MCPServer, service: RentalService) -> None:
 
     @server.tool(
         name="list_rental_providers",
-        description="Lista as 15 imobiliárias e portais integrados, regiões atendidas e operações suportadas.",
+        description="List all 15 integrated real estate agencies and portals, coverage regions, and capabilities.",
     )
     async def list_rental_providers() -> list[dict[str, Any]]:
         return service.catalog()
@@ -33,16 +35,18 @@ def _register_search_tools(server: MCPServer, service: RentalService) -> None:
 
     @server.tool(
         name="search_rentals",
-        description="Pesquisa imóveis para alugar em uma imobiliária específica do Vale do Aço ou portal nacional.",
+        description="Search rental properties on a specific agency or portal with optional criteria.",
     )
     async def search_rentals(
         provider: str,
-        city: str = "Timóteo",
-        min_price: float = 0.0,
-        max_price: float = 0.0,
-        bedrooms: int = 0,
-        property_type: str = "",
+        city: str | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        bedrooms: int | None = None,
+        property_type: str | None = None,
         page: int = 1,
+        include_raw: bool = False,
+        limit: int = 20,
     ) -> dict[str, Any]:
         return await service.search(
             provider=provider,
@@ -52,20 +56,24 @@ def _register_search_tools(server: MCPServer, service: RentalService) -> None:
             bedrooms=bedrooms,
             property_type=property_type,
             page=page,
+            include_raw=include_raw,
+            limit=limit,
         )
 
     @server.tool(
         name="federated_search_rentals",
-        description="Pesquisa simultânea e federada de aluguéis em múltiplas imobiliárias (ou em todas).",
+        description="Federated parallel search for rental properties across multiple agencies (or all available).",
     )
     async def federated_search_rentals(
         providers: list[str] | None = None,
-        city: str = "Timóteo",
-        min_price: float = 0.0,
-        max_price: float = 0.0,
-        bedrooms: int = 0,
-        property_type: str = "",
+        city: str | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        bedrooms: int | None = None,
+        property_type: str | None = None,
         page: int = 1,
+        include_raw: bool = False,
+        limit: int = 20,
     ) -> dict[str, Any]:
         return await service.federated_search(
             providers=providers,
@@ -75,6 +83,8 @@ def _register_search_tools(server: MCPServer, service: RentalService) -> None:
             bedrooms=bedrooms,
             property_type=property_type,
             page=page,
+            include_raw=include_raw,
+            limit=limit,
         )
 
 
@@ -83,14 +93,14 @@ def _register_detail_and_facets_tools(server: MCPServer, service: RentalService)
 
     @server.tool(
         name="get_rental_detail",
-        description="Obtém detalhes completos, especificações e fotos de um imóvel em uma imobiliária.",
+        description="Get complete property specifications, features, and photo gallery for a property code.",
     )
     async def get_rental_detail(provider: str, property_code: str) -> dict[str, Any]:
         return await service.detail(provider=provider, property_code=property_code)
 
     @server.tool(
         name="get_rental_facets",
-        description="Obtém cidades, bairros e categorias disponíveis em uma imobiliária.",
+        description="Get search facets (available cities, neighborhoods, property types) for a provider.",
     )
     async def get_rental_facets(provider: str) -> dict[str, Any]:
         return await service.facets(provider=provider)

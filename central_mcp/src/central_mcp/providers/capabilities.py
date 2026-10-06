@@ -85,9 +85,14 @@ PROVIDER_CAPABILITIES: dict[str, ProviderCapability] = {
 
 
 def get_provider_capability(provider_id: str) -> ProviderCapability:
-    """Lookup capability record or raise KeyError."""
+    """Lookup capability record or return default for custom registered providers."""
     if provider_id not in PROVIDER_CAPABILITIES:
-        raise KeyError(f"Unknown provider: {provider_id}")
+        return ProviderCapability(
+            provider_id=provider_id,
+            supported_filters=frozenset(
+                {"city", "min_price", "max_price", "bedrooms", "property_type", "page"}
+            ),
+        )
     return PROVIDER_CAPABILITIES[provider_id]
 
 
@@ -129,6 +134,7 @@ def validate_search_request(
     property_type: str | None = None,
     page: int = 1,
     providers: list[str] | None = None,
+    known_providers: set[str] | None = None,
 ) -> None:
     """Validate numerical and string bounds for search request."""
     _validate_page(page)
@@ -136,7 +142,7 @@ def validate_search_request(
     _validate_bedrooms(bedrooms)
     _validate_strings(city, property_type)
     if providers is not None:
-        _validate_provider_list(providers)
+        _validate_provider_list(providers, known_providers)
 
 
 def _validate_page(page: int) -> None:
@@ -165,13 +171,16 @@ def _validate_strings(city: str | None, property_type: str | None) -> None:
         raise ValueError("property_type length exceeds 100 characters")
 
 
-def _validate_provider_list(providers: list[str]) -> None:
+def _validate_provider_list(
+    providers: list[str], known: set[str] | None = None
+) -> None:
     if len(providers) > 15:
         raise ValueError(f"Maximum 15 providers allowed, got {len(providers)}")
+    valid_set = known if known is not None else set(PROVIDER_CAPABILITIES.keys())
     seen: set[str] = set()
     for pid in providers:
         if pid in seen:
             raise ValueError(f"Duplicate provider requested: {pid}")
         seen.add(pid)
-        if pid not in PROVIDER_CAPABILITIES:
+        if pid not in valid_set:
             raise ValueError(f"Unknown provider: {pid}")
