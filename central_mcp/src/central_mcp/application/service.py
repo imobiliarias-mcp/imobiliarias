@@ -6,6 +6,7 @@ import asyncio
 from typing import Any
 
 from central_mcp.errors import ProviderError, ProviderErrorCode
+from central_mcp.limits import ProviderThrottle
 from central_mcp.providers.capabilities import (
     get_provider_capability,
     validate_provider_filters,
@@ -62,9 +63,15 @@ def _extract_price(item: dict[str, Any]) -> Any:
 class RentalService:
     """Facade orchestrating queries across rental provider adapters."""
 
-    def __init__(self, registry: ProviderRegistry | None = None, concurrency_limit: int = 5) -> None:
+    def __init__(
+        self,
+        registry: ProviderRegistry | None = None,
+        concurrency_limit: int = 5,
+        throttle: ProviderThrottle | None = None,
+    ) -> None:
         self._registry = registry or ProviderRegistry.create_default()
         self._semaphore = asyncio.Semaphore(concurrency_limit)
+        self._throttle = throttle or ProviderThrottle(min_interval_seconds=0.0)
 
     def catalog(self) -> list[dict[str, Any]]:
         return self._registry.catalog().to_list()
@@ -90,7 +97,7 @@ class RentalService:
             raise ProviderError(provider, ProviderErrorCode.UNAVAILABLE, cap.unavailable_reason)
         adapter = self._registry.get(provider)
         kwargs = {"city": city or "", "min_price": min_price or 0.0, "max_price": max_price or 0.0, "bedrooms": bedrooms or 0, "property_type": property_type or "", "page": page}
-        async with self._semaphore:
+        async with self._semaphore, self._throttle.acquire(provider):
             raw = await asyncio.to_thread(adapter.search_rentals, **kwargs)
         raw_listings = raw.get("listings", [])
         projected = [project_listing(provider, x, include_raw) for x in raw_listings]
@@ -98,12 +105,12 @@ class RentalService:
 
     async def detail(self, provider: str, property_code: str) -> dict[str, Any]:
         adapter = self._registry.get(provider)
-        async with self._semaphore:
+        async with self._semaphore, self._throttle.acquire(provider):
             return await asyncio.to_thread(adapter.get_property_detail, property_code)
 
     async def facets(self, provider: str) -> dict[str, Any]:
         adapter = self._registry.get(provider)
-        async with self._semaphore:
+        async with self._semaphore, self._throttle.acquire(provider):
             return await asyncio.to_thread(adapter.get_facets)
 
     async def federated_search(
@@ -140,7 +147,7 @@ class RentalService:
                 return {"provider": provider, "status": "unavailable", "count": 0, "error_code": "unavailable", "error": cap.unavailable_reason, "results": []}
             adapter = self._registry.get(provider)
             kwargs = {"city": city or "", "min_price": min_price or 0.0, "max_price": max_price or 0.0, "bedrooms": bedrooms or 0, "property_type": property_type or "", "page": page}
-            async with self._semaphore:
+            async with self._semaphore, self._throttle.acquire(provider):
                 res = await asyncio.to_thread(adapter.search_rentals, **kwargs)
             listings = res.get("listings", [])
             projected = [project_listing(provider, x, include_raw) for x in listings]
