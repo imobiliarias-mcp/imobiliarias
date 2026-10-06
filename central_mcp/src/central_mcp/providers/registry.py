@@ -6,6 +6,7 @@ from typing import Any
 from central_mcp.domain.collections import ProviderCatalog
 from central_mcp.domain.entities import ProviderSpec
 from central_mcp.domain.value_objects import ProviderId
+from central_mcp.errors import ProviderError
 from central_mcp.providers.venv_adapter import LocalVenvAdapter
 
 PROVIDER_MAP: dict[str, str] = {
@@ -90,6 +91,6 @@ class ProviderRegistry:
             if hasattr(adapter, "get_provider_info"):
                 return adapter.get_provider_info()
             return {}
-        except (KeyError, RuntimeError, OSError, ValueError):
+        except (KeyError, RuntimeError, OSError, ValueError, ProviderError):
             return {}
 
