@@ -18,6 +18,7 @@ def test_worker_disallowed_method_rejected(tmp_path: Path):
         input=json.dumps(request),
         capture_output=True,
         text=True,
+        check=False,
     )
     assert proc.returncode != 0
     assert "Disallowed method" in proc.stderr
@@ -29,6 +30,7 @@ def test_worker_invalid_json_stdin():
         input="not-valid-json",
         capture_output=True,
         text=True,
+        check=False,
     )
     assert proc.returncode != 0
     assert "Invalid JSON" in proc.stderr
@@ -63,6 +65,7 @@ def test_worker_successful_invocation(tmp_path: Path):
         text=True,
         cwd=str(tmp_path),
         env={**dict(env), "PATH": "/usr/bin:/bin"},
+        check=False,
     )
     assert proc.returncode == 0
     out = json.loads(proc.stdout)

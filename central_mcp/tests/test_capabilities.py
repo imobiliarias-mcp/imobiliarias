@@ -4,10 +4,9 @@ import pytest
 
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.providers.capabilities import (
-    PROVIDER_CAPABILITIES,
-    validate_search_request,
-    validate_provider_filters,
     get_provider_capability,
+    validate_provider_filters,
+    validate_search_request,
 )
 
 

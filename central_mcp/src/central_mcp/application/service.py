@@ -154,7 +154,7 @@ class RentalService:
             return {"provider": provider, "status": "ok", "count": len(projected), "error_code": None, "error": None, "results": projected}
         except ProviderError as err:
             return {"provider": provider, "status": "error", "count": 0, "error_code": err.code, "error": err.message, "results": []}
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
             return {"provider": provider, "status": "error", "count": 0, "error_code": "upstream_error", "error": str(exc), "results": []}
 
     def _format_federated_response(self, provider_results: list[dict[str, Any]], limit: int) -> dict[str, Any]:

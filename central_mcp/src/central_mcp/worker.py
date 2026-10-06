@@ -19,7 +19,7 @@ def _read_request() -> dict[str, Any]:
         sys.exit(1)
     try:
         data = json.loads(raw)
-    except Exception as exc:
+    except (json.JSONDecodeError, ValueError) as exc:
         sys.stderr.write(f"Invalid JSON on stdin: {exc}\n")
         sys.exit(1)
     if not isinstance(data, dict):
@@ -64,7 +64,7 @@ def main() -> None:
         adapter = _load_adapter(class_name)
         result = _execute(adapter, method, kwargs)
         _write_response(result)
-    except Exception as exc:
+    except (RuntimeError, OSError, ValueError, KeyError, AttributeError, TypeError, ImportError) as exc:
         sys.stderr.write(f"{type(exc).__name__}: {exc}\n")
         sys.exit(1)
 

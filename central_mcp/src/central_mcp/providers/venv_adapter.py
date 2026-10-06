@@ -126,7 +126,7 @@ class LocalVenvAdapter:
             )
         try:
             return json.loads(stdout.decode("utf-8"))
-        except Exception as exc:
+        except (json.JSONDecodeError, ValueError) as exc:
             raise ProviderError(
                 self._provider_name,
                 ProviderErrorCode.INVALID_OUTPUT,
