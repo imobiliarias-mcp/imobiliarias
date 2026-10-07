@@ -1,98 +1,87 @@
-# Fix: Epifânio price parser and VivaReal default bedroom filter
+# Plan: Incorporate Condominium Fees and Total Cost in central_mcp and Subprojects
 
 ## Context
 
-Two bugs deferred during the `central_mcp` implementation review:
+When searching for rental properties, nominal rent does not reflect the total monthly cost. Condominium fees (`condo_fee`) often represent a substantial portion of monthly expenditure.
+Per user instructions:
+- Output detailed prices: `rent_price`, `condo_fee`, and `total_price` (calculated as `rent_price + condo_fee`, or `rent_price` if condo is 0 or absent).
+- Keep `price` for backward compatibility.
+- Update `central_mcp` projection, filtering, and detail endpoints.
+- Update subproject parsers/adapters where condominium data is available in APIs or HTML.
 
-1. **Epifânio** (`scripts/client/search_parser.py:77-82`): `_extract_card_price` strips *all* non-digit characters with `re.sub(r"[^\d]", "", text)`. Brazilian formatting uses `.` as thousands separator and `,` for decimals — so `R$ 1.150,00` becomes `115000.0` (100× too large). The detail parser HTML fallback (`scripts/client/parsers.py:112`) has the same bug.
-2. **VivaReal** (`scripts/mcp/tools.py:42`): `_build_filter` forces `rooms = [bedrooms] if bedrooms > 0 else [2, 3, 4]`. An unconstrained search (no bedroom intent) silently limits results to 2, 3 or 4 bedrooms, excluding studios and 1-bedroom properties. The underlying infrastructure already supports an empty filter — `FilterSpecification` defaults to `RoomFilter(())`, and the URL builder omits the `bedrooms` API parameter when the filter is empty.
+## Architectural Changes & Design
 
-## Scope
+### 1. central_mcp (`central_mcp/src/central_mcp/application/service.py`)
 
-Touch only the two subproject files, their tests, and the two subproject suites. `central_mcp` code is unchanged; its 51-test suite stays green as-is.
+- **Extract Rent Price (`_parse_numeric_price`)**:
+  Helper converting numeric/formatted BRL prices (e.g. `1500.0`, `"R$ 1.500,00"`) into `float | None`.
+- **Extract Condo Fee (`_extract_condo_fee`)**:
+  Searches keys: `condo_fee`, `condo`, `monthly_condo`, `condominium`, `condominio`, `valor_condominio`, `condominium_price`, `expenses`.
+  Normalizes via `_parse_numeric_price` to `float | None`.
+- **Calculate Total Price (`_calculate_total_price`)**:
+  Returns `round(rent + (condo or 0.0), 2)` if `rent` is known, else `None`.
+- **Update `project_listing`**:
+  ```python
+  {
+      "provider": provider,
+      "code": str(code) if code is not None else None,
+      "title": str(title) if title is not None else None,
+      "location": location,
+      "price": price,  # backwards-compatible string or raw value
+      "rent_price": rent_price,  # float | None
+      "condo_fee": condo_fee,    # float | None
+      "total_price": total_price, # float | None
+      "bedrooms": int(bedrooms) if bedrooms is not None else None,
+      "url": str(url) if url is not None else None,
+  }
+  ```
+- **Update `detail` endpoint**:
+  Normalize `rent_price`, `condo_fee`, and `total_price` in the property detail result dict.
+- **Update `ListingFeatures` and `ListingSummary` in domain** (`central_mcp/src/central_mcp/domain/entities.py`):
+  Add `condo_fee: float | None = None` and `total_price: float | None = None` to `ListingSummary.to_dict()`.
 
-## Plan
+### 2. Subproject Updates
 
-### Task 1: Epifânio price parser (TDD, RED→GREEN)
+- **`vivareal`** (`vivareal/scripts/mcp/tools.py`):
+  Currently returns `"condo": item.pricing.monthly_condo`.
+  Add `"condo_fee": float(item.pricing.monthly_condo) if item.pricing.monthly_condo else 0.0`.
+  In `get_property_detail`, include `condo_fee: float | None`.
+- **`minascaixaimoveis`** (`minascaixaimoveis/scripts/client/parsers.py` & `scripts/domain/entities.py`):
+  `valorcondominio` is already in the API payload.
+  Extract `condo_fee` in `SearchResultParser` and include `condo_fee` in `ListingValuation` / `RentalListing.to_dictionary()`.
+- **`cabralporto`** (`cabralporto/scripts/mcp/tools.py`):
+  Expose `condo_fee` in `get_property_detail` if present in `PropertyDetail`.
+- **`imobiliariaportalmg`** (`imobiliariaportalmg/scripts/mcp/tools.py`):
+  Expose `condo_fee` in `get_property_detail`.
 
-**Files:**
-- `epifanioimoveis/scripts/client/search_parser.py` — `_extract_card_price` + shared `_parse_brl_price`
-- `epifanioimoveis/scripts/client/parsers.py` — `_extract_price` HTML fallback
-- `epifanioimoveis/tests/test_parsers.py` — add localized BRL regression cases
+### 3. Test-Driven Development (TDD) Steps
 
-**Algorithm:**
-BRL `R$ 1.150,00` → remove `R$` and spaces → `1.150,00` → remove `.` thousands separators → `1150,00` → replace `,` decimal → `1150.00` → `float("1150.00")` = `1150.0`.
-Edge case: `R$ 2.930` (no cents) → `2.930` → `2930` → `2930.0`. ✓
+1. **RED in central_mcp**:
+   Add unit tests in `central_mcp/tests/test_service.py`:
+   - `test_project_listing_with_condo_and_total_price`: verifying `rent_price=1200.0`, `condo_fee=300.0`, `total_price=1500.0`.
+   - `test_project_listing_without_condo_fee`: verifying `rent_price=1000.0`, `condo_fee=None`, `total_price=1000.0`.
+   - `test_service_detail_includes_condo_breakdown`.
+2. **GREEN in central_mcp**:
+   Implement helper functions and updated projection in `central_mcp/src/central_mcp/application/service.py`.
+   Update domain entities in `central_mcp/src/central_mcp/domain/entities.py`.
+3. **RED in vivareal & minascaixaimoveis**:
+   Add test for `condo_fee` field in `vivareal/tests/test_mcp_adapter.py` and `minascaixaimoveis/tests/test_service_mock.py`.
+4. **GREEN in vivareal & minascaixaimoveis**:
+   Implement `condo_fee` exposure in their listing serializers.
+5. **Full Suite Verification**:
+   - `cd central_mcp && .venv/bin/pytest -v` (all 51+ tests pass).
+   - `cd vivareal && .venv/bin/pytest -v`.
+   - `cd minascaixaimoveis && .venv/bin/pytest -v`.
+   - Live query validation.
 
-**Shared helper** (≤15 lines, single indent, no `else`):
-```python
-def _parse_brl_price(text: str) -> float:
-    """Convert Brazilian-formatted price string to float. Returns 0.0 on failure."""
-    clean = re.sub(r"[R$\s]", "", text)          # remove R$, spaces
-    clean = clean.replace(".", "").replace(",", ".")  # thousands → decimal dot
-    return float(clean) if clean else 0.0
-```
+## Critical Files
 
-Use `_parse_brl_price` in both `_extract_card_price` (search_parser.py) and the HTML fallback of `_extract_price` (parsers.py).
-
-**Tests to add** in `epifanioimoveis/tests/test_parsers.py`:
-- Card with `R$ 1.150,00` → `price` field = `1150.0`
-- Card with `R$ 2.930` (no comma) → `price` field = `2930.0`
-- Detail HTML fallback (no JSON-LD) with `R$ 1.150,00` → price = `1150.0`
-
-**Verification:**
-```bash
-cd epifanioimoveis && .venv/bin/pytest -q tests/test_parsers.py
-# Expected: all existing + 3 new tests pass
-```
-
----
-
-### Task 2: VivaReal default bedroom filter (TDD, RED→GREEN)
-
-**File:**
-- `vivareal/scripts/mcp/tools.py` — `_build_filter` line 42
-- `vivareal/tests/test_mcp_adapter.py` — add unconstrained search test
-
-**Change** (one line):
-```python
-# Before
-rooms = [bedrooms] if bedrooms > 0 else [2, 3, 4]
-# After
-rooms = [bedrooms] if bedrooms and bedrooms > 0 else []
-```
-
-Empty `rooms` → `RoomFilter.from_iterable([])` → `RoomFilter(())` → URL builder omits `bedrooms` parameter (existing behaviour in `url_builder.py:81-82`).
-
-**Tests to add** in `vivareal/tests/test_mcp_adapter.py`:
-- `adapter.search_rentals(city="Timóteo")` → captured `FilterSpecification.bedrooms` is empty (`is_empty()` = True)
-- `adapter.search_rentals(city="Timóteo", bedrooms=0)` → same, empty filter
-- Existing `bedrooms=2` test continues to pass unchanged
-
-**Verification:**
-```bash
-cd vivareal && .venv/bin/pytest -q tests/test_mcp_adapter.py
-# Expected: all existing + new tests pass
-```
-
----
-
-### Final verification
-
-```bash
-# Epifânio full suite
-cd epifanioimoveis && .venv/bin/pytest -q
-# Expected: 44+ passed
-
-# VivaReal full suite
-cd vivareal && .venv/bin/pytest -q
-# Expected: 37+ passed
-
-# Central MCP — unchanged, must stay 51/51
-cd central_mcp && .venv/bin/pytest -q
-# Expected: 51 passed
-```
-
-## Commit
-
-One commit per subproject (epifânio, vivareal). Merge directly into `main`.
+- `central_mcp/src/central_mcp/application/service.py`
+- `central_mcp/src/central_mcp/domain/entities.py`
+- `central_mcp/src/central_mcp/server.py`
+- `central_mcp/tests/test_service.py`
+- `vivareal/scripts/mcp/tools.py`
+- `vivareal/tests/test_mcp_adapter.py`
+- `minascaixaimoveis/scripts/client/parsers.py`
+- `minascaixaimoveis/scripts/domain/entities.py`
+- `minascaixaimoveis/tests/test_service_mock.py`
