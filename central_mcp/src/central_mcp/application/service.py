@@ -26,7 +26,8 @@ def project_listing(
     price = _extract_price(item)
     rent_price = _parse_numeric_price(price)
     condo_fee = _extract_condo_fee(item)
-    total_price = _calculate_total_price(rent_price, condo_fee)
+    iptu = _extract_iptu(item)
+    total_price = _calculate_total_price(rent_price, condo_fee, iptu)
     bedrooms = item.get("bedrooms") or item.get("rooms")
     url = item.get("url") or item.get("detail_url")
     projected: dict[str, Any] = {
@@ -37,6 +38,7 @@ def project_listing(
         "price": price,
         "rent_price": rent_price,
         "condo_fee": condo_fee,
+        "iptu": iptu,
         "total_price": total_price,
         "bedrooms": int(bedrooms) if bedrooms is not None else None,
         "url": str(url) if url is not None else None,
@@ -94,11 +96,31 @@ def _extract_condo_fee(item: dict[str, Any]) -> float | None:
     return None
 
 
-def _calculate_total_price(rent: float | None, condo: float | None) -> float | None:
+def _extract_iptu(item: dict[str, Any]) -> float | None:
+    """Extract and normalize property tax (IPTU) from listing item."""
+    candidate_keys = (
+        "iptu",
+        "monthly_iptu",
+        "valoriptu",
+        "total_taxes_price",
+        "tax",
+    )
+    for key in candidate_keys:
+        parsed = _parse_numeric_price(item.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _calculate_total_price(
+    rent: float | None,
+    condo: float | None,
+    iptu: float | None = None,
+) -> float | None:
     """Calculate combined monthly housing cost."""
     if rent is None:
         return None
-    additional_fee = condo or 0.0
+    additional_fee = (condo or 0.0) + (iptu or 0.0)
     return round(rent + additional_fee, 2)
 
 
@@ -109,9 +131,11 @@ def _enrich_detail_pricing(raw: Any) -> Any:
     price = _extract_price(raw)
     rent_price = _parse_numeric_price(raw.get("rent_price")) or _parse_numeric_price(price)
     condo_fee = _extract_condo_fee(raw)
-    total_price = _calculate_total_price(rent_price, condo_fee)
+    iptu = _extract_iptu(raw)
+    total_price = _calculate_total_price(rent_price, condo_fee, iptu)
     raw["rent_price"] = rent_price
     raw["condo_fee"] = condo_fee
+    raw["iptu"] = iptu
     raw["total_price"] = total_price
     return raw
 

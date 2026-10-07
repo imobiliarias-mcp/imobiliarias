@@ -1,7 +1,6 @@
 """Tests for provider capability matrix and request validation."""
 
 import pytest
-
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.providers.capabilities import (
     get_provider_capability,

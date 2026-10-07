@@ -1,7 +1,6 @@
 """Unit tests for Central MCP server creation and tool execution."""
 
 import pytest
-
 from central_mcp.application.service import RentalService
 from central_mcp.providers.registry import ProviderRegistry
 from central_mcp.server import create_mcp_server

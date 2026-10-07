@@ -1,7 +1,6 @@
 """Unit tests for Central MCP domain models and value objects."""
 
 import pytest
-
 from central_mcp.domain.collections import (
     ListingCollection,
 )
@@ -119,5 +118,36 @@ def test_listing_summary_condo_fee_and_total_price():
     assert data["rent_price"] == 1500.0
     assert data["condo_fee"] == 350.0
     assert data["total_price"] == 1850.0
+
+
+def test_listing_summary_iptu_and_total_price():
+    """Verify ListingSummary serialization preserves iptu and incorporates it into total_price."""
+    from central_mcp.domain.entities import (
+        ListingFeatures,
+        ListingIdentity,
+        ListingLocation,
+    )
+    identity = ListingIdentity(property_id="3", url=PublicUrl("https://exemplo.com/3"))
+    features = ListingFeatures(
+        price=ListingPrice(1500.0),
+        bedrooms=BedroomsCount(3),
+        condo_fee=350.0,
+        iptu=100.0,
+    )
+    location = ListingLocation(neighborhood="Centro", city="Timóteo")
+    item = ListingSummary(
+        identity=identity,
+        features=features,
+        location=location,
+        title="Apto Centro",
+        provider=ProviderId("cabralporto"),
+        bathrooms=2,
+    )
+    data = item.to_dict()
+    assert data["rent_price"] == 1500.0
+    assert data["condo_fee"] == 350.0
+    assert data["iptu"] == 100.0
+    assert data["total_price"] == 1950.0
+
 
 

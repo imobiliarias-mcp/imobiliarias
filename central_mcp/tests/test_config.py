@@ -1,7 +1,6 @@
 """Tests for central_mcp config and error hierarchy."""
 
 import pytest
-
 from central_mcp.config import AppConfig
 from central_mcp.errors import ProviderError, ProviderErrorCode
 

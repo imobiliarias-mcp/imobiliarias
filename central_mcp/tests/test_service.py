@@ -1,7 +1,6 @@
 """Unit tests for RentalService orchestration facade and federation contract."""
 
 import pytest
-
 from central_mcp.application.service import RentalService, project_listing
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.providers.registry import ProviderRegistry
@@ -228,5 +227,64 @@ async def test_service_detail_includes_condo_breakdown():
     assert detail["rent_price"] == 2000.0
     assert detail["condo_fee"] == 450.0
     assert detail["total_price"] == 2450.0
+
+
+def test_project_listing_with_condo_and_iptu():
+    raw_item = {
+        "id": "125",
+        "code": "C125",
+        "title": "Apartamento Luxo",
+        "city": "Timóteo",
+        "price": "R$ 1.200,00",
+        "condo_fee": "R$ 300,00",
+        "iptu": "R$ 100,00",
+        "bedrooms": 2,
+    }
+    projected = project_listing("vivareal", raw_item)
+    assert projected["rent_price"] == 1200.0
+    assert projected["condo_fee"] == 300.0
+    assert projected["iptu"] == 100.0
+    assert projected["total_price"] == 1600.0
+
+
+def test_project_listing_with_iptu_only():
+    raw_item = {
+        "id": "126",
+        "code": "C126",
+        "title": "Casa Bairro",
+        "city": "Timóteo",
+        "price": 1000.0,
+        "iptu": 50.0,
+        "bedrooms": 3,
+    }
+    projected = project_listing("casalinhares", raw_item)
+    assert projected["rent_price"] == 1000.0
+    assert projected["condo_fee"] is None
+    assert projected["iptu"] == 50.0
+    assert projected["total_price"] == 1050.0
+
+
+@pytest.mark.asyncio
+async def test_service_detail_includes_iptu_and_total_price():
+    class DetailWithIptuMockAdapter(MockAdapter):
+        def get_property_detail(self, property_code: str):
+            return {
+                "id": property_code,
+                "title": "Apto Centro",
+                "price": "R$ 2.000,00",
+                "condominio": "R$ 450,00",
+                "valoriptu": "R$ 150,00",
+            }
+
+    registry = ProviderRegistry.create_default()
+    registry.register("mock_iptu_detail", DetailWithIptuMockAdapter("mock_iptu_detail"))
+    service = RentalService(registry=registry)
+
+    detail = await service.detail("mock_iptu_detail", "APT-100")
+    assert detail["rent_price"] == 2000.0
+    assert detail["condo_fee"] == 450.0
+    assert detail["iptu"] == 150.0
+    assert detail["total_price"] == 2600.0
+
 
 

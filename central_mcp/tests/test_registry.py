@@ -1,7 +1,6 @@
 """Unit tests for ProviderRegistry."""
 
 import pytest
-
 from central_mcp.providers.registry import ProviderRegistry
 
 

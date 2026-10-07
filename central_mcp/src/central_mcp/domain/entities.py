@@ -34,6 +34,7 @@ class ListingFeatures:
     price: ListingPrice
     bedrooms: BedroomsCount
     condo_fee: float | None = None
+    iptu: float | None = None
     total_price: float | None = None
 
 
@@ -52,7 +53,9 @@ class ListingSummary:
         """Serialize listing summary to dictionary."""
         rent_amount = self.features.price.amount
         condo = self.features.condo_fee
-        total = self.features.total_price or round(rent_amount + (condo or 0.0), 2)
+        iptu = self.features.iptu
+        additional = (condo or 0.0) + (iptu or 0.0)
+        total = self.features.total_price or round(rent_amount + additional, 2)
         return {
             "id": self.identity.property_id,
             "title": self.title,
@@ -60,6 +63,7 @@ class ListingSummary:
             "price_numeric": rent_amount,
             "rent_price": rent_amount,
             "condo_fee": condo,
+            "iptu": iptu,
             "total_price": total,
             "bedrooms": self.features.bedrooms.count,
             "bathrooms": self.bathrooms,

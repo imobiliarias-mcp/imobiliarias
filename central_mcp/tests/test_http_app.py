@@ -1,10 +1,9 @@
 """Tests for Starlette HTTP combined application and rate limiting middleware."""
 
-from starlette.testclient import TestClient
-
 from central_mcp.config import AppConfig
 from central_mcp.http_app import create_http_app
 from central_mcp.server import create_mcp_server
+from starlette.testclient import TestClient
 
 
 def test_healthz_endpoint():
