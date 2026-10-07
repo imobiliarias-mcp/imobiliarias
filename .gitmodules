@@ -1,0 +1,48 @@
+[submodule "alecorretoramg"]
+	path = alecorretoramg
+	url = https://github.com/imobiliarias-mcp/alecorretoramg.git
+[submodule "arthusoimoveis"]
+	path = arthusoimoveis
+	url = https://github.com/imobiliarias-mcp/arthusoimoveis.git
+[submodule "cabralporto"]
+	path = cabralporto
+	url = https://github.com/imobiliarias-mcp/cabralporto.git
+[submodule "casalinhares"]
+	path = casalinhares
+	url = https://github.com/imobiliarias-mcp/casalinhares.git
+[submodule "epifanioimoveis"]
+	path = epifanioimoveis
+	url = https://github.com/imobiliarias-mcp/epifanioimoveis.git
+[submodule "helenaimoveis"]
+	path = helenaimoveis
+	url = https://github.com/imobiliarias-mcp/helenaimoveis.git
+[submodule "imobiliariaportalmg"]
+	path = imobiliariaportalmg
+	url = https://github.com/imobiliarias-mcp/imobiliariaportalmg.git
+[submodule "imobiliariavaleinvest"]
+	path = imobiliariavaleinvest
+	url = https://github.com/imobiliarias-mcp/imobiliariavaleinvest.git
+[submodule "imovelweb"]
+	path = imovelweb
+	url = https://github.com/imobiliarias-mcp/imovelweb.git
+[submodule "marcioimoveis"]
+	path = marcioimoveis
+	url = https://github.com/imobiliarias-mcp/marcioimoveis.git
+[submodule "minascaixaimoveis"]
+	path = minascaixaimoveis
+	url = https://github.com/imobiliarias-mcp/minascaixaimoveis.git
+[submodule "niltoncorretordeimoveis"]
+	path = niltoncorretordeimoveis
+	url = https://github.com/imobiliarias-mcp/niltoncorretordeimoveis.git
+[submodule "novaimobiliaria"]
+	path = novaimobiliaria
+	url = https://github.com/imobiliarias-mcp/novaimobiliaria.git
+[submodule "veraimobiliaria"]
+	path = veraimobiliaria
+	url = https://github.com/imobiliarias-mcp/veraimobiliaria.git
+[submodule "vivareal"]
+	path = vivareal
+	url = https://github.com/imobiliarias-mcp/vivareal.git
+[submodule "docs/sot/modelcontextprotocol"]
+	path = docs/sot/modelcontextprotocol
+	url = https://github.com/modelcontextprotocol/modelcontextprotocol.git
