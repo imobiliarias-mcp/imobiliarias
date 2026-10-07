@@ -173,3 +173,60 @@ async def test_service_detail_rejects_ssrf_urls():
     with pytest.raises(ValueError, match="Property code contains invalid characters"):
         await service.detail(provider="vivareal", property_code="code with spaces")
 
+
+def test_project_listing_with_condo_and_total_price():
+    raw_item = {
+        "id": "123",
+        "code": "C123",
+        "title": "Apartamento Centro",
+        "city": "Timóteo",
+        "neighborhood": "Funcionários",
+        "price": "R$ 1.200,00",
+        "condo_fee": "R$ 300,00",
+        "bedrooms": 2,
+        "detail_url": "https://example.com/c123",
+    }
+    projected = project_listing("vivareal", raw_item)
+    assert projected["rent_price"] == 1200.0
+    assert projected["condo_fee"] == 300.0
+    assert projected["total_price"] == 1500.0
+    assert projected["price"] == "R$ 1.200,00"
+
+
+def test_project_listing_without_condo_fee():
+    raw_item = {
+        "id": "124",
+        "code": "C124",
+        "title": "Casa Bairro",
+        "city": "Timóteo",
+        "price": 1000.0,
+        "bedrooms": 3,
+        "detail_url": "https://example.com/c124",
+    }
+    projected = project_listing("casalinhares", raw_item)
+    assert projected["rent_price"] == 1000.0
+    assert projected["condo_fee"] is None
+    assert projected["total_price"] == 1000.0
+
+
+@pytest.mark.asyncio
+async def test_service_detail_includes_condo_breakdown():
+    class DetailMockAdapter(MockAdapter):
+        def get_property_detail(self, property_code: str):
+            return {
+                "id": property_code,
+                "title": "Apto Luxo",
+                "price": "R$ 2.000,00",
+                "condominio": "R$ 450,00",
+            }
+
+    registry = ProviderRegistry.create_default()
+    registry.register("mock_detail", DetailMockAdapter("mock_detail"))
+    service = RentalService(registry=registry)
+
+    detail = await service.detail("mock_detail", "APT-99")
+    assert detail["rent_price"] == 2000.0
+    assert detail["condo_fee"] == 450.0
+    assert detail["total_price"] == 2450.0
+
+

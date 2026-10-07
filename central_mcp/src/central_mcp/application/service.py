@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any
 
 from central_mcp.errors import ProviderError, ProviderErrorCode
@@ -23,6 +24,9 @@ def project_listing(
     title = item.get("title")
     location = _extract_location(item)
     price = _extract_price(item)
+    rent_price = _parse_numeric_price(price)
+    condo_fee = _extract_condo_fee(item)
+    total_price = _calculate_total_price(rent_price, condo_fee)
     bedrooms = item.get("bedrooms") or item.get("rooms")
     url = item.get("url") or item.get("detail_url")
     projected: dict[str, Any] = {
@@ -31,12 +35,85 @@ def project_listing(
         "title": str(title) if title is not None else None,
         "location": location,
         "price": price,
+        "rent_price": rent_price,
+        "condo_fee": condo_fee,
+        "total_price": total_price,
         "bedrooms": int(bedrooms) if bedrooms is not None else None,
         "url": str(url) if url is not None else None,
     }
     if include_raw:
         projected["raw"] = item
     return projected
+
+
+def _parse_numeric_price(val: Any) -> float | None:
+    """Convert price or fee representation into float, or None if absent/invalid."""
+    if val is None or val == "":
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    if not isinstance(val, str):
+        return None
+    clean = re.sub(r"[R$\s]", "", val)
+    if not clean:
+        return None
+    return _parse_cleaned_price_string(clean)
+
+
+def _parse_cleaned_price_string(clean: str) -> float | None:
+    """Parse sanitized numeric string into float."""
+    try:
+        if "," in clean:
+            return float(clean.replace(".", "").replace(",", "."))
+        if clean.count(".") > 1:
+            return float(clean.replace(".", ""))
+        if clean.count(".") == 1 and len(clean.split(".")[1]) == 3:
+            return float(clean.replace(".", ""))
+        return float(clean)
+    except (ValueError, TypeError):
+        return None
+
+
+def _extract_condo_fee(item: dict[str, Any]) -> float | None:
+    """Extract and normalize condominium fee from listing item."""
+    candidate_keys = (
+        "condo_fee",
+        "condo",
+        "monthly_condo",
+        "condominium",
+        "condominio",
+        "valor_condominio",
+        "valorcondominio",
+        "condominium_price",
+        "expenses",
+    )
+    for key in candidate_keys:
+        parsed = _parse_numeric_price(item.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _calculate_total_price(rent: float | None, condo: float | None) -> float | None:
+    """Calculate combined monthly housing cost."""
+    if rent is None:
+        return None
+    additional_fee = condo or 0.0
+    return round(rent + additional_fee, 2)
+
+
+def _enrich_detail_pricing(raw: Any) -> Any:
+    """Augment detail response with normalized pricing fields."""
+    if not isinstance(raw, dict):
+        return raw
+    price = _extract_price(raw)
+    rent_price = _parse_numeric_price(raw.get("rent_price")) or _parse_numeric_price(price)
+    condo_fee = _extract_condo_fee(raw)
+    total_price = _calculate_total_price(rent_price, condo_fee)
+    raw["rent_price"] = rent_price
+    raw["condo_fee"] = condo_fee
+    raw["total_price"] = total_price
+    return raw
 
 
 def _extract_location(item: dict[str, Any]) -> str | None:
@@ -116,7 +193,8 @@ class RentalService:
         _validate_property_code(property_code)
         adapter = self._registry.get(provider)
         async with self._semaphore, self._throttle.acquire(provider):
-            return await asyncio.to_thread(adapter.get_property_detail, property_code)
+            raw = await asyncio.to_thread(adapter.get_property_detail, property_code)
+        return _enrich_detail_pricing(raw)
 
     async def facets(self, provider: str) -> dict[str, Any]:
         adapter = self._registry.get(provider)

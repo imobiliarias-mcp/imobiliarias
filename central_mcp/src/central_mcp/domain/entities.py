@@ -33,6 +33,8 @@ class ListingFeatures:
 
     price: ListingPrice
     bedrooms: BedroomsCount
+    condo_fee: float | None = None
+    total_price: float | None = None
 
 
 @dataclass(frozen=True)
@@ -48,11 +50,17 @@ class ListingSummary:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize listing summary to dictionary."""
+        rent_amount = self.features.price.amount
+        condo = self.features.condo_fee
+        total = self.features.total_price or round(rent_amount + (condo or 0.0), 2)
         return {
             "id": self.identity.property_id,
             "title": self.title,
             "price": self.features.price.formatted(),
-            "price_numeric": self.features.price.amount,
+            "price_numeric": rent_amount,
+            "rent_price": rent_amount,
+            "condo_fee": condo,
+            "total_price": total,
             "bedrooms": self.features.bedrooms.count,
             "bathrooms": self.bathrooms,
             "neighborhood": self.location.neighborhood,

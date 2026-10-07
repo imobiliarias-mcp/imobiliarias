@@ -91,3 +91,33 @@ def test_listing_collection_first_class():
     assert len(dict_repr) == 1
     assert dict_repr[0]["title"] == "Casa Centro"
 
+
+def test_listing_summary_condo_fee_and_total_price():
+    """Verify ListingSummary serialization preserves condo_fee and total_price."""
+    from central_mcp.domain.entities import (
+        ListingFeatures,
+        ListingIdentity,
+        ListingLocation,
+    )
+    identity = ListingIdentity(property_id="2", url=PublicUrl("https://exemplo.com/2"))
+    features = ListingFeatures(
+        price=ListingPrice(1500.0),
+        bedrooms=BedroomsCount(3),
+        condo_fee=350.0,
+        total_price=1850.0,
+    )
+    location = ListingLocation(neighborhood="Quitandinha", city="Timóteo")
+    item = ListingSummary(
+        identity=identity,
+        features=features,
+        location=location,
+        title="Apto Quitandinha",
+        provider=ProviderId("cabralporto"),
+        bathrooms=2,
+    )
+    data = item.to_dict()
+    assert data["rent_price"] == 1500.0
+    assert data["condo_fee"] == 350.0
+    assert data["total_price"] == 1850.0
+
+
