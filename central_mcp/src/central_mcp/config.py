@@ -23,6 +23,10 @@ class AppConfig:
     allowed_origins: tuple[str, ...] = ("*",)
     stateless_http: bool = True
     provider_min_interval_seconds: float = 1.0
+    web_enabled: bool = True
+    static_dir: str | None = None
+    enrich_concurrency: int = 5
+    detail_cache_ttl_seconds: float = 900.0
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> AppConfig:
@@ -42,6 +46,10 @@ class AppConfig:
         burst = int(source.get("CENTRAL_MCP_RATE_LIMIT_BURST", "10"))
         proxies = cls._parse_csv(source.get("CENTRAL_MCP_TRUSTED_PROXIES", ""))
         stateless = source.get("CENTRAL_MCP_STATELESS_HTTP", "true").lower() == "true"
+        web_enabled = source.get("CENTRAL_MCP_WEB_ENABLED", "true").lower() == "true"
+        static_dir = source.get("CENTRAL_MCP_STATIC_DIR") or None
+        enrich_concurrency = int(source.get("CENTRAL_MCP_ENRICH_CONCURRENCY", "5"))
+        detail_cache_ttl = float(source.get("CENTRAL_MCP_DETAIL_CACHE_TTL", "900"))
         return cls(
             host=host,
             port=port,
@@ -51,6 +59,10 @@ class AppConfig:
             rate_limit_burst=burst,
             trusted_proxies=proxies,
             stateless_http=stateless,
+            web_enabled=web_enabled,
+            static_dir=static_dir,
+            enrich_concurrency=enrich_concurrency,
+            detail_cache_ttl_seconds=detail_cache_ttl,
         )
 
     @staticmethod
@@ -67,3 +79,7 @@ class AppConfig:
             raise ValueError("max_concurrent_workers must be positive")
         if self.rate_limit_per_minute <= 0 or self.rate_limit_burst <= 0:
             raise ValueError("rate limit parameters must be positive")
+        if self.enrich_concurrency <= 0:
+            raise ValueError("enrich_concurrency must be positive")
+        if self.detail_cache_ttl_seconds < 0:
+            raise ValueError("detail_cache_ttl_seconds must not be negative")

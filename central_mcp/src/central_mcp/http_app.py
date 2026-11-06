@@ -13,8 +13,10 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from central_mcp.application.service import RentalService
 from central_mcp.config import AppConfig
 from central_mcp.limits import InFlightLimiter, TokenBucketLimiter
+from central_mcp.web.routes import build_static_mount, build_web_routes
 
 
 class RateLimitMiddleware:
@@ -74,8 +76,15 @@ async def healthz_endpoint(request: Any) -> JSONResponse:
     return JSONResponse({"status": "healthy"})
 
 
-def create_http_app(server: MCPServer, config: AppConfig) -> ASGIApp:
-    """Combine streamable HTTP, SSE, and health endpoints into a single Starlette app."""
+def create_http_app(
+    server: MCPServer,
+    config: AppConfig,
+    service: RentalService | None = None,
+) -> ASGIApp:
+    """Combine MCP, health, JSON API and static UI routes into a single Starlette app.
+
+    The static UI mount is added last so it cannot shadow the MCP or API routes.
+    """
     enable_dns = "*" not in config.allowed_hosts
     hosts = [h for h in config.allowed_hosts if h != "*"]
     if "testserver" not in hosts:
@@ -98,5 +107,10 @@ def create_http_app(server: MCPServer, config: AppConfig) -> ASGIApp:
     routes = [Route("/healthz", healthz_endpoint)]
     routes.extend(st_app.routes)
     routes.extend(sse_app.routes)
+    if config.web_enabled:
+        routes.extend(build_web_routes(service or RentalService(), config))
+        static_mount = build_static_mount(config.static_dir)
+        if static_mount is not None:
+            routes.append(static_mount)
     base_app = Starlette(routes=routes, lifespan=st_app.router.lifespan_context)
     return RateLimitMiddleware(base_app, config)
