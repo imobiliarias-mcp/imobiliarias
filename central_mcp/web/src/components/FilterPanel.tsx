@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { NeighborhoodPicker } from "@/components/NeighborhoodPicker";
 import { Button } from "@/components/ui/button";
 import { providerLabel } from "@/lib/format";
@@ -14,9 +14,17 @@ interface FilterPanelProps {
   onApply: (filters: SearchFilters) => void;
 }
 
-/** Filter controls working on a draft; nothing reaches the search until "Aplicar". */
+const APPLY_DELAY_MS = 400;
+
+/**
+ * Filter controls. Changes apply on their own after a short pause (debounce), so typing a
+ * price does not fire a search per keystroke. Outside changes (e.g. "Limpar filtros") sync in.
+ */
 export function FilterPanel({ applied, providers, locations, onApply }: FilterPanelProps) {
   const [draft, setDraft] = useState<SearchFilters>(applied);
+  const lastEmitted = useRef<SearchFilters>(applied);
+  useSyncWithOutside(applied, lastEmitted, setDraft);
+  useDebouncedApply(draft, lastEmitted, APPLY_DELAY_MS, (filters) => emit(filters));
   const ids = { price: useId(), max: useId(), bedrooms: useId(), city: useId() };
   const cityNeighborhoods = locations.neighborhoods.filter((item) => item.city_key === draft.city);
 
@@ -35,18 +43,18 @@ export function FilterPanel({ applied, providers, locations, onApply }: FilterPa
     update("providers", selected);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    onApply(draft);
+  function emit(filters: SearchFilters) {
+    lastEmitted.current = filters;
+    onApply(filters);
   }
 
   function clearAll() {
     setDraft(EMPTY_FILTERS);
-    onApply(EMPTY_FILTERS);
+    emit(EMPTY_FILTERS);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-5 text-sm" aria-label="Filtros de busca">
+    <div className="grid gap-5 text-sm" role="group" aria-label="Filtros de busca">
       <fieldset className="grid gap-2">
         <legend className="mb-1 font-medium">Negócio</legend>
         <div className="grid grid-cols-2 gap-2" role="group" aria-label="Tipo de negócio">
@@ -164,14 +172,53 @@ export function FilterPanel({ applied, providers, locations, onApply }: FilterPa
         </div>
       </details>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button type="button" variant="outline" onClick={clearAll} className="min-h-11">
-          Limpar
-        </Button>
-        <Button type="submit" className="min-h-11">
-          Aplicar filtros
-        </Button>
-      </div>
-    </form>
+      <Button type="button" variant="outline" onClick={clearAll} className="min-h-11">
+        Limpar filtros
+      </Button>
+    </div>
   );
+}
+
+function sameFilters(left: SearchFilters, right: SearchFilters): boolean {
+  return (
+    left.city === right.city &&
+    left.minPrice === right.minPrice &&
+    left.maxPrice === right.maxPrice &&
+    left.bedrooms === right.bedrooms &&
+    left.neighborhoods.join(",") === right.neighborhoods.join(",") &&
+    left.providers.join(",") === right.providers.join(",")
+  );
+}
+
+/** Adopt filters changed from outside (URL, "Limpar" elsewhere), but not our own echo. */
+function useSyncWithOutside(
+  applied: SearchFilters,
+  lastEmitted: { current: SearchFilters },
+  setDraft: (filters: SearchFilters) => void,
+) {
+  useEffect(() => {
+    if (applied === lastEmitted.current) {
+      return;
+    }
+    lastEmitted.current = applied;
+    setDraft(applied);
+  }, [applied, lastEmitted, setDraft]);
+}
+
+/** Emit the draft once it has been still for `delayMs` and differs from what was last emitted. */
+function useDebouncedApply(
+  draft: SearchFilters,
+  lastEmitted: { current: SearchFilters },
+  delayMs: number,
+  emit: (filters: SearchFilters) => void,
+) {
+  useEffect(() => {
+    if (sameFilters(draft, lastEmitted.current)) {
+      return;
+    }
+    const timer = window.setTimeout(() => emit(draft), delayMs);
+    return () => window.clearTimeout(timer);
+    // Only a change of draft restarts the timer; re-renders must not postpone the search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, delayMs]);
 }
