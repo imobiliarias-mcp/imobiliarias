@@ -73,6 +73,11 @@ class LocationCatalog:
         """Return the canonical city name for a key or name, or None when unknown."""
         return self._cities.get(location_key(text))
 
+    def neighborhood_name(self, city_name: str, neighborhood: str) -> str:
+        """Return the best-known spelling of a neighborhood, or the input when never observed."""
+        entry = self._neighborhoods.get(self.neighborhood_key(city_name, neighborhood))
+        return entry["name"] if entry is not None else neighborhood
+
     def observe(self, locations: Iterable[ParsedLocation]) -> None:
         """Record locations, persisting only when a city or neighborhood was not known before."""
         with self._lock:
