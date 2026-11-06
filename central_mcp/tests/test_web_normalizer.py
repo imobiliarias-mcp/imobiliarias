@@ -71,3 +71,10 @@ def test_cover_falls_back_to_single_media_url_from_search_payload():
     assert normalize_cover_fallback({"media_url": "https://cdn.test/cover.jpg"}) == ("https://cdn.test/cover.jpg",)
     assert normalize_cover_fallback({"media_url": "javascript:x"}) == ()
     assert normalize_cover_fallback({}) == ()
+
+
+def test_cover_fallback_accepts_thumbnail_url():
+    from central_mcp.web.normalizer import normalize_cover_fallback
+
+    raw = {"thumbnail_url": "https://cdn.example.com/thumb.jpg"}
+    assert normalize_cover_fallback(raw) == ("https://cdn.example.com/thumb.jpg",)

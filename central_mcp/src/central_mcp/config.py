@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class AppConfig:
     static_dir: str | None = None
     enrich_concurrency: int = 5
     detail_cache_ttl_seconds: float = 900.0
+    data_dir: Path | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> AppConfig:
@@ -52,6 +54,7 @@ class AppConfig:
         static_dir = source.get("CENTRAL_MCP_STATIC_DIR") or None
         enrich_concurrency = int(source.get("CENTRAL_MCP_ENRICH_CONCURRENCY", "5"))
         detail_cache_ttl = float(source.get("CENTRAL_MCP_DETAIL_CACHE_TTL", "900"))
+        data_dir = source.get("CENTRAL_MCP_DATA_DIR") or None
         return cls(
             host=host,
             port=port,
@@ -66,6 +69,7 @@ class AppConfig:
             static_dir=static_dir,
             enrich_concurrency=enrich_concurrency,
             detail_cache_ttl_seconds=detail_cache_ttl,
+            data_dir=Path(data_dir) if data_dir else None,
         )
 
     @staticmethod

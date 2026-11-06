@@ -7,6 +7,8 @@ WORKDIR /build
 COPY central_mcp/pyproject.toml central_mcp/README.md ./
 COPY central_mcp/src ./src
 RUN pip install --no-cache-dir --target /install .
+# Writable data directory for the location catalog; owned by the distroless nonroot uid.
+RUN mkdir -p /data && chown 65532:65532 /data
 
 FROM node:24-slim AS web-builder
 
@@ -30,9 +32,11 @@ ENV CENTRAL_MCP_PORT=8000
 ENV CENTRAL_MCP_REPO_ROOT=/app
 ENV PYTHONPATH=/app/site-packages:/app/central_mcp/src
 ENV CENTRAL_MCP_STATIC_DIR=/app/central_mcp/web/dist
+ENV CENTRAL_MCP_DATA_DIR=/data
 
 # Copy installed site-packages
 COPY --from=builder /install /app/site-packages
+COPY --from=builder --chown=65532:65532 /data /data
 
 # Copy central_mcp package (explicit paths keep local .venv and node_modules out of the image)
 COPY central_mcp/src /app/central_mcp/src

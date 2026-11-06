@@ -21,6 +21,9 @@ class WebListing:
     code: str | None
     title: str | None
     location: str | None
+    city: str | None
+    neighborhood: str | None
+    transaction: str | None
     rent_price: float | None
     condo_fee: float | None
     iptu: float | None
@@ -39,6 +42,9 @@ class WebListing:
             code=projected.get("code"),
             title=projected.get("title"),
             location=projected.get("location"),
+            city=projected.get("city"),
+            neighborhood=projected.get("neighborhood"),
+            transaction=projected.get("transaction"),
             rent_price=projected.get("rent_price"),
             condo_fee=projected.get("condo_fee"),
             iptu=projected.get("iptu"),
@@ -56,6 +62,9 @@ class WebListing:
             "code": self.code,
             "title": self.title,
             "location": self.location,
+            "city": self.city,
+            "neighborhood": self.neighborhood,
+            "transaction": self.transaction,
             "rent_price": self.rent_price,
             "condo_fee": self.condo_fee,
             "iptu": self.iptu,

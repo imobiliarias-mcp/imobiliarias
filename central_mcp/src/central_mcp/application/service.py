@@ -16,12 +16,21 @@ from central_mcp.providers.capabilities import (
 )
 from central_mcp.providers.registry import ProviderRegistry
 
+CODE_KEYS = ("code", "id", "property_code", "property_id", "reference")
+
+
+def _first_present(item: dict[str, Any], keys: tuple[str, ...]) -> Any:
+    for key in keys:
+        if item.get(key):
+            return item[key]
+    return None
+
 
 def project_listing(
     provider: str, item: dict[str, Any], include_raw: bool = False
 ) -> dict[str, Any]:
     """Transform raw provider listing into standard compact projection."""
-    code = item.get("code") or item.get("id") or item.get("property_code")
+    code = _first_present(item, CODE_KEYS)
     title = item.get("title")
     location = _extract_location(item)
     price = _extract_price(item)

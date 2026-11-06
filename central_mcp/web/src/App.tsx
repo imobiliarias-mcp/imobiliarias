@@ -1,155 +1,195 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ListingCard } from "@/components/ListingCard";
+import { useEffect, useMemo, useState } from "react";
+import { FilterDrawer } from "@/components/FilterDrawer";
+import { FilterPanel } from "@/components/FilterPanel";
 import { ListingDialog } from "@/components/ListingDialog";
 import { ProviderStatusBanner } from "@/components/ProviderStatusBanner";
-import { SearchForm } from "@/components/SearchForm";
+import { ResultsSection } from "@/components/ResultsSection";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchProviders, searchListings } from "@/lib/api";
-import { SORT_LABELS, sortListings, type SortOrder } from "@/lib/sort";
-import type { Listing, ProviderInfo, ProviderOutcome, SearchFilters } from "@/types";
+import { buildSearchQuery, fetchLocations, fetchProviders, searchListings } from "@/lib/api";
+import { loadLastSearch, readCachedResults, saveLastSearch, writeCachedResults } from "@/lib/storage";
+import { sortListings, type SortOrder } from "@/lib/sort";
+import { readUrlState, writeUrlState, type AppUrlState } from "@/lib/url-state";
+import type { Listing, LocationCatalog, ProviderInfo, SearchFilters, SearchResponse, ViewMode } from "@/types";
 
-const EMPTY_FILTERS: SearchFilters = { providers: [], city: "", minPrice: "", maxPrice: "", bedrooms: "" };
 const SKELETON_COUNT = 6;
+const EMPTY_LOCATIONS: LocationCatalog = { cities: [], neighborhoods: [] };
 
-interface SearchState {
-  listings: Listing[];
-  outcomes: ProviderOutcome[];
-}
+/** Results shown for one query, plus how many listings the neighborhood filter hid. */
+type SearchState = SearchResponse;
 
-/** Single-screen rental finder: filters, aggregated results and per-listing details. */
+/** Rental finder: filters live in the URL, results are cached per query, layout adapts to screen width. */
 export function App() {
+  const [initial] = useState(readInitialState);
+  const [applied, setApplied] = useState<AppUrlState>(initial);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
-  const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
+  const [locations, setLocations] = useState<LocationCatalog>(EMPTY_LOCATIONS);
   const [search, setSearch] = useState<SearchState | null>(null);
-  const [sortOrder, setSortOrder] = useState<SortOrder>("total_asc");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
   const [selected, setSelected] = useState<Listing | null>(null);
-  const controllerRef = useRef<AbortController | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+
+  const query = buildSearchQuery(applied.filters);
+  const activeCount = countActive(applied.filters);
+
+  useEffect(() => {
+    const search = writeUrlState(applied);
+    window.history.replaceState(null, "", `${window.location.pathname}${search}`);
+    saveLastSearch(search);
+  }, [applied]);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchProviders(controller.signal)
-      .then(setProviders)
-      .catch((cause: unknown) => {
-        if (!controller.signal.aborted) {
-          setError(describeError(cause, "Não foi possível carregar as imobiliárias."));
-        }
-      });
+    fetchProviders(controller.signal).then(setProviders).catch(() => setProviders([]));
+    fetchLocations(controller.signal).then(setLocations).catch(() => setLocations(EMPTY_LOCATIONS));
     return () => controller.abort();
   }, []);
 
-  useEffect(() => () => controllerRef.current?.abort(), []);
-
-  const sorted = useMemo(() => sortListings(search?.listings ?? [], sortOrder), [search, sortOrder]);
-
-  async function runSearch() {
-    controllerRef.current?.abort();
+  useEffect(() => {
     const controller = new AbortController();
-    controllerRef.current = controller;
-    setLoading(true);
+    const cached = readCachedResults<SearchResponse>(query);
+    setSearch(cached);
     setError(null);
-    try {
-      const response = await searchListings(filters, controller.signal);
-      setSearch({ listings: response.results, outcomes: response.providers });
-    } catch (cause: unknown) {
-      if (!controller.signal.aborted) {
-        setError(describeError(cause, "Falha na busca. Tente novamente."));
-      }
-    } finally {
-      if (!controller.signal.aborted) {
-        setLoading(false);
-      }
-    }
+    setLoading(true);
+    const startedAt = performance.now();
+    searchListings(query, controller.signal)
+      .then((response) => {
+        writeCachedResults(query, response);
+        setSearch(response);
+        setElapsedMs(performance.now() - startedAt);
+        refreshLocations();
+      })
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(describeError(cause, "Falha na busca. Tente novamente."));
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+    return () => controller.abort();
+  }, [query, retryToken]);
+
+  const sorted = useMemo(
+    () => sortListings(search?.results ?? [], applied.sortOrder),
+    [search, applied.sortOrder],
+  );
+
+  /** The search records newly seen cities and neighborhoods on the server; pull them for the pickers. */
+  function refreshLocations() {
+    fetchLocations().then(setLocations).catch(() => undefined);
+  }
+
+  function applyFilters(filters: SearchFilters) {
+    setApplied((current) => ({ ...current, filters }));
+    setDrawerOpen(false);
+  }
+
+  function clearFilters() {
+    applyFilters({ ...applied.filters, city: "", neighborhoods: [], providers: [], minPrice: "", maxPrice: "", bedrooms: "" });
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
-      <header>
+    <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
+      <header className="grid gap-1">
         <h1 className="text-2xl font-semibold">Aluguéis no Vale do Aço</h1>
         <p className="text-sm text-muted-foreground">
           Busca em todas as imobiliárias de uma vez. Fotos, preços e descrições vêm das próprias imobiliárias.
         </p>
       </header>
 
-      <SearchForm
-        filters={filters}
-        providers={providers}
-        busy={loading}
-        onChange={setFilters}
-        onSubmit={runSearch}
-      />
+      <div className="grid gap-6 md:grid-cols-[18rem_1fr] lg:grid-cols-[19rem_1fr]">
+        <aside className="hidden md:block md:sticky md:top-4 md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:rounded-xl md:border md:border-border md:bg-card md:p-4">
+          <FilterPanel key={query} applied={applied.filters} providers={providers} locations={locations} onApply={applyFilters} />
+        </aside>
 
-      {error && (
-        <p role="alert" className="rounded-lg border border-destructive px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      )}
+        <main className="grid min-w-0 content-start gap-4 pb-24 md:pb-0">
+          {error && (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive px-4 py-3 text-sm text-destructive">
+              <span>{error}</span>
+              <button type="button" onClick={() => setRetryToken((value) => value + 1)} className="min-h-11 rounded-md border border-destructive px-4">
+                Tentar de novo
+              </button>
+            </div>
+          )}
 
-      {search && <ProviderStatusBanner outcomes={search.outcomes} />}
+          {search && <ProviderStatusBanner outcomes={search.providers} />}
 
-      {loading && <LoadingGrid />}
+          {!search && loading && <LoadingGrid />}
 
-      {!loading && search && (
-        <ResultsSection
-          listings={sorted}
-          sortOrder={sortOrder}
-          onSortChange={setSortOrder}
-          onOpen={setSelected}
-        />
-      )}
+          {search && (
+            <>
+              {loading && <p className="text-xs text-muted-foreground" aria-live="polite">Atualizando resultados…</p>}
+              {!loading && elapsedMs !== null && <p className="text-xs text-muted-foreground">Busca em {(elapsedMs / 1000).toFixed(1)} s</p>}
+              <ResultsSection
+                listings={sorted}
+                activeLabels={activeLabels(applied.filters, locations, providers)}
+                sortOrder={applied.sortOrder}
+                view={applied.view}
+                hiddenWithoutNeighborhood={search.hidden_without_neighborhood}
+                onSortChange={(order: SortOrder) => setApplied((current) => ({ ...current, sortOrder: order }))}
+                onViewChange={(view: ViewMode) => setApplied((current) => ({ ...current, view }))}
+                onOpen={setSelected}
+                onClearFilters={clearFilters}
+              />
+            </>
+          )}
+        </main>
+      </div>
 
-      {!loading && !search && !error && (
-        <p className="text-sm text-muted-foreground">Escolha os filtros e clique em Buscar.</p>
-      )}
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+        <button type="button" onClick={() => setDrawerOpen(true)} className="min-h-11 w-full rounded-md bg-primary text-primary-foreground">
+          Filtros{activeCount > 0 ? ` (${activeCount})` : ""}
+        </button>
+      </div>
+
+      <FilterDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <FilterPanel key={`drawer-${query}`} applied={applied.filters} providers={providers} locations={locations} onApply={applyFilters} />
+      </FilterDrawer>
 
       <ListingDialog listing={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
 
-interface ResultsSectionProps {
-  listings: Listing[];
-  sortOrder: SortOrder;
-  onSortChange: (order: SortOrder) => void;
-  onOpen: (listing: Listing) => void;
+function readInitialState(): AppUrlState {
+  const search = window.location.search || loadLastSearch() || "";
+  return readUrlState(search);
 }
 
-function ResultsSection({ listings, sortOrder, onSortChange, onOpen }: ResultsSectionProps) {
-  if (listings.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nenhum imóvel encontrado com esses filtros.</p>;
+function countActive(filters: SearchFilters): number {
+  const scalars = [filters.city, filters.minPrice, filters.maxPrice, filters.bedrooms].filter((value) => value !== "");
+  return scalars.length + filters.neighborhoods.length + filters.providers.length;
+}
+
+function activeLabels(filters: SearchFilters, locations: LocationCatalog, providers: ProviderInfo[]): string[] {
+  const labels: string[] = [];
+  const cityName = locations.cities.find((city) => city.key === filters.city)?.name;
+  if (filters.city) {
+    labels.push(cityName ?? filters.city);
   }
-  return (
-    <section className="grid gap-4" aria-label="Resultados">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{listings.length} imóvel(is) encontrado(s)</p>
-        <label className="flex items-center gap-2 text-sm">
-          Ordenar por
-          <select
-            value={sortOrder}
-            onChange={(event) => onSortChange(event.target.value as SortOrder)}
-            className="h-9 rounded-md border border-border bg-card px-3 text-sm"
-          >
-            {(Object.keys(SORT_LABELS) as SortOrder[]).map((order) => (
-              <option key={order} value={order}>
-                {SORT_LABELS[order]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {listings.map((listing) => (
-          <ListingCard key={`${listing.provider}-${listing.code ?? listing.official_url ?? listing.title}`} listing={listing} onOpen={onOpen} />
-        ))}
-      </div>
-    </section>
-  );
+  for (const key of filters.neighborhoods) {
+    labels.push(locations.neighborhoods.find((item) => item.key === key)?.name ?? key);
+  }
+  if (filters.minPrice || filters.maxPrice) {
+    labels.push(`Aluguel ${filters.minPrice || "0"} a ${filters.maxPrice || "∞"}`);
+  }
+  if (filters.bedrooms) {
+    labels.push(filters.bedrooms === "4" ? "4+ quartos" : `${filters.bedrooms} quarto(s)`);
+  }
+  for (const name of filters.providers) {
+    labels.push(providers.find((item) => item.provider_name === name)?.provider_name ?? name);
+  }
+  return labels;
 }
 
 function LoadingGrid() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Buscando imóveis">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Buscando imóveis">
       {Array.from({ length: SKELETON_COUNT }, (_, position) => (
         <div key={position} className="grid gap-3 rounded-xl border border-border p-3">
           <Skeleton className="aspect-[4/3] w-full" />

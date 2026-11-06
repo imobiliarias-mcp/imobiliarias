@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { formatBrl, providerLabel } from "@/lib/format";
+import { formatBrl, locationLabel, providerLabel } from "@/lib/format";
 import type { Listing } from "@/types";
 
 interface ListingCardProps {
@@ -23,7 +23,7 @@ export function ListingCard({ listing, onOpen }: ListingCardProps) {
         <Badge className="absolute left-2 top-2 bg-card/90">{providerLabel(listing.provider)}</Badge>
       </button>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <p className="text-xs text-muted-foreground">{listing.location ?? "Localização não informada"}</p>
+        <p className="text-xs text-muted-foreground">{locationLabel(listing)}</p>
         <h3 className="line-clamp-2 text-sm font-medium">{listing.title ?? "Imóvel sem título"}</h3>
         <div>
           <p className="text-xl font-semibold">{formatBrl(listing.total_price)}</p>

@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 PHOTO_KEYS = ("photos", "images", "gallery")
 PHOTO_URL_KEYS = ("url", "src", "href")
-SINGLE_MEDIA_KEYS = ("media_url", "image_url", "cover_url")
+SINGLE_MEDIA_KEYS = ("media_url", "image_url", "cover_url", "thumbnail_url")
 DESCRIPTION_KEYS = ("description", "descricao")
 MAX_DESCRIPTION_CHARS = 2000
 ALLOWED_SCHEMES = frozenset({"http", "https"})
