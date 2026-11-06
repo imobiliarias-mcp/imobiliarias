@@ -4,15 +4,14 @@ export interface ProviderInfo {
   supported_operations: string[];
 }
 
-export interface ListingPhotos {
-  photos: string[];
-}
-
 export interface Listing {
   provider: string;
   code: string | null;
   title: string | null;
   location: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  transaction: string | null;
   rent_price: number | null;
   condo_fee: number | null;
   iptu: number | null;
@@ -36,12 +35,33 @@ export interface SearchResponse {
   status: "ok" | "partial" | "error";
   providers: ProviderOutcome[];
   results: Listing[];
+  hidden_without_neighborhood: number;
 }
 
+export interface City {
+  key: string;
+  name: string;
+}
+
+export interface Neighborhood {
+  key: string;
+  name: string;
+  city_key: string;
+}
+
+export interface LocationCatalog {
+  cities: City[];
+  neighborhoods: Neighborhood[];
+}
+
+/** Filters as the user sees them; city and neighborhoods are catalog keys. */
 export interface SearchFilters {
-  providers: string[];
   city: string;
+  neighborhoods: string[];
+  providers: string[];
   minPrice: string;
   maxPrice: string;
   bedrooms: string;
 }
+
+export type ViewMode = "grid" | "list";

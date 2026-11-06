@@ -16,7 +16,6 @@ from central_mcp.providers.capabilities import (
 )
 from central_mcp.providers.registry import ProviderRegistry
 
-
 CODE_KEYS = ("code", "id", "property_code", "property_id", "reference")
 
 

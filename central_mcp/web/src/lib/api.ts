@@ -1,4 +1,4 @@
-import type { ProviderInfo, SearchFilters, SearchResponse } from "@/types";
+import type { LocationCatalog, ProviderInfo, SearchFilters, SearchResponse } from "@/types";
 
 export class ApiError extends Error {
   constructor(
@@ -30,9 +30,13 @@ export function fetchProviders(signal?: AbortSignal): Promise<ProviderInfo[]> {
   return getJson<ProviderInfo[]>("/api/providers", signal);
 }
 
-/** Build the query string for /api/search, dropping blank filters. */
+export function fetchLocations(signal?: AbortSignal): Promise<LocationCatalog> {
+  return getJson<LocationCatalog>("/api/locations", signal);
+}
+
+/** Build the query string for /api/search from filters; blank values are dropped. */
 export function buildSearchQuery(filters: SearchFilters): string {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ transaction: "rent" });
   const entries: Array<[string, string]> = [
     ["city", filters.city.trim()],
     ["min_price", filters.minPrice.trim()],
@@ -44,13 +48,15 @@ export function buildSearchQuery(filters: SearchFilters): string {
       params.set(key, value);
     }
   }
+  if (filters.neighborhoods.length > 0) {
+    params.set("neighborhoods", filters.neighborhoods.join(","));
+  }
   if (filters.providers.length > 0) {
     params.set("providers", filters.providers.join(","));
   }
   return params.toString();
 }
 
-export function searchListings(filters: SearchFilters, signal?: AbortSignal): Promise<SearchResponse> {
-  const query = buildSearchQuery(filters);
-  return getJson<SearchResponse>(`/api/search${query ? `?${query}` : ""}`, signal);
+export function searchListings(query: string, signal?: AbortSignal): Promise<SearchResponse> {
+  return getJson<SearchResponse>(`/api/search?${query}`, signal);
 }
