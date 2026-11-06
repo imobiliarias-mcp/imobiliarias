@@ -24,7 +24,7 @@ from central_mcp.web.location_catalog import LocationCatalog
 from central_mcp.web.location_scope import LocationScope, scope_results
 from central_mcp.web.locations import ParsedLocation, parse_location
 from central_mcp.web.ordering import interleave_by_provider
-from central_mcp.web.price_filter import apply_minimum_price
+from central_mcp.web.price_filter import apply_rent_range
 from central_mcp.web.search_params import parse_search_params, required_text
 
 FEDERATED_FETCH_LIMIT = 1000
@@ -87,6 +87,7 @@ class WebApi:
             neighborhoods = params.pop("neighborhoods")
             params.pop("transaction")
             minimum_price = params.pop("min_price")
+            maximum_price = params["max_price"]
             outcome = await self._service.federated_search(
                 **params,
                 city=city_name,
@@ -97,7 +98,7 @@ class WebApi:
             return _error_response(exc)
         scope = LocationScope(city_name=city_name, neighborhood_keys=frozenset(neighborhoods))
         scoped = scope_results(self._locate(outcome["results"]), scope, self._locations)
-        priced = apply_minimum_price(scoped.listings, minimum_price)
+        priced = apply_rent_range(scoped.listings, minimum_price, maximum_price)
         page = interleave_by_provider(priced, limit)
         listings = await self._enricher.enrich(page)
         providers = [entry for entry in outcome["providers"] if _is_visible_provider(entry["provider"])]

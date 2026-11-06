@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import math
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -19,8 +19,8 @@ def parse_search_params(query: Mapping[str, str]) -> dict[str, Any]:
         "city": _optional_text(query.get("city")),
         "neighborhoods": _csv(query.get("neighborhoods")) or [],
         "transaction": _transaction(query.get("transaction")),
-        "min_price": _optional_float(query.get("min_price"), "min_price"),
-        "max_price": _optional_float(query.get("max_price"), "max_price"),
+        "min_price": _optional_price(query.get("min_price"), "min_price"),
+        "max_price": _optional_price(query.get("max_price"), "max_price"),
         "bedrooms": _optional_int(query.get("bedrooms"), "bedrooms"),
         "property_type": _optional_text(query.get("property_type")),
         "page": _bounded_int(query.get("page"), "page", default=1, minimum=1, maximum=10_000),
@@ -56,17 +56,28 @@ def _csv(raw: str | None) -> list[str] | None:
     return [part.strip() for part in text.split(",") if part.strip()]
 
 
-def _optional_float(raw: str | None, name: str) -> float | None:
+PRICE_PATTERN = re.compile(r"\d+(\.\d+)?")
+THOUSANDS_PATTERN = re.compile(r"\d{1,3}(\.\d{3})+")
+
+
+def _optional_price(raw: str | None, name: str) -> float | None:
     text = _optional_text(raw)
     if text is None:
         return None
-    try:
-        value = float(text)
-    except ValueError as exc:
-        raise ValueError(f"{name} must be a number") from exc
-    if not math.isfinite(value):
-        raise ValueError(f"{name} must be a finite number")
-    return value
+    normalized = _normalize_price_text(text)
+    if PRICE_PATTERN.fullmatch(normalized) is None:
+        raise ValueError(f"{name} deve ser um valor numérico, ex.: 1500 ou 1.500,00")
+    return float(normalized)
+
+
+def _normalize_price_text(text: str) -> str:
+    """Turn Brazilian (1.500,00, R$ 1.500) or plain (1500.5) price text into a plain decimal string."""
+    stripped = text.replace("R$", "").strip()
+    if "," in stripped:
+        return stripped.replace(".", "").replace(",", ".")
+    if THOUSANDS_PATTERN.fullmatch(stripped):
+        return stripped.replace(".", "")
+    return stripped
 
 
 def _optional_int(raw: str | None, name: str) -> int | None:
