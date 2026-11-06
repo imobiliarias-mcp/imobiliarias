@@ -36,6 +36,7 @@ Erros: `400` para parâmetros inválidos, `404` para imobiliária desconhecida, 
 
 - `parse_location` (`web/locations.py`) extrai cidade e bairro de quatro formatos: campos estruturados, `"Bairro, Cidade"`, `"Bairro, Cidade / MG"` e `"Bairro - Cidade/MG"`. Acentos e caixa são ignorados nas chaves; o nome exibido prefere a forma com acento.
 - `LocationCatalog` (`web/location_catalog.py`) grava em `CENTRAL_MCP_DATA_DIR/locations.json` (escrita atômica). Só insere cidades e bairros inéditos. Sem diretório gravável, mantém tudo em memória e registra aviso no log.
+- `min_price` é aplicado pelo central sobre o aluguel (`rent_price`), não repassado às imobiliárias; com mínimo ativo, anúncios sem preço são ocultados.
 - Filtros são aplicados antes do corte de `limit`. Imóveis de imobiliárias sem localização herdam a cidade pesquisada e não são descartados pelo filtro de cidade.
 
 ## Interface
