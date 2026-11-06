@@ -23,6 +23,7 @@ class AppConfig:
     allowed_origins: tuple[str, ...] = ("*",)
     stateless_http: bool = True
     provider_min_interval_seconds: float = 1.0
+    max_in_flight_requests: int = 16
     web_enabled: bool = True
     static_dir: str | None = None
     enrich_concurrency: int = 5
@@ -46,6 +47,7 @@ class AppConfig:
         burst = int(source.get("CENTRAL_MCP_RATE_LIMIT_BURST", "10"))
         proxies = cls._parse_csv(source.get("CENTRAL_MCP_TRUSTED_PROXIES", ""))
         stateless = source.get("CENTRAL_MCP_STATELESS_HTTP", "true").lower() == "true"
+        in_flight = int(source.get("CENTRAL_MCP_MAX_IN_FLIGHT_REQUESTS", "16"))
         web_enabled = source.get("CENTRAL_MCP_WEB_ENABLED", "true").lower() == "true"
         static_dir = source.get("CENTRAL_MCP_STATIC_DIR") or None
         enrich_concurrency = int(source.get("CENTRAL_MCP_ENRICH_CONCURRENCY", "5"))
@@ -59,6 +61,7 @@ class AppConfig:
             rate_limit_burst=burst,
             trusted_proxies=proxies,
             stateless_http=stateless,
+            max_in_flight_requests=in_flight,
             web_enabled=web_enabled,
             static_dir=static_dir,
             enrich_concurrency=enrich_concurrency,
@@ -79,6 +82,8 @@ class AppConfig:
             raise ValueError("max_concurrent_workers must be positive")
         if self.rate_limit_per_minute <= 0 or self.rate_limit_burst <= 0:
             raise ValueError("rate limit parameters must be positive")
+        if self.max_in_flight_requests <= 0:
+            raise ValueError("max_in_flight_requests must be positive")
         if self.enrich_concurrency <= 0:
             raise ValueError("enrich_concurrency must be positive")
         if self.detail_cache_ttl_seconds < 0:

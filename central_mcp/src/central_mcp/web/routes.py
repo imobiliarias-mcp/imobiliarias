@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -106,18 +107,27 @@ def parse_search_params(query: Mapping[str, str]) -> dict[str, Any]:
     }
 
 
-def build_web_routes(service: WebSearchService, config: AppConfig) -> list[BaseRoute]:
-    """Create /api routes sharing one detail cache and enricher."""
+@dataclass(frozen=True)
+class WebSurface:
+    """Browser API routes plus the startup task that pre-builds their shared data."""
+
+    routes: list[BaseRoute]
+    warm_up: Callable[[], Awaitable[None]]
+
+
+def build_web_routes(service: WebSearchService, config: AppConfig) -> WebSurface:
+    """Create /api routes sharing one detail cache, enricher and provider catalog."""
     cache = TtlCache(ttl_seconds=config.detail_cache_ttl_seconds)
     enricher = ListingEnricher(service, cache, concurrency=config.enrich_concurrency)
     catalog = CachedCatalog(service, ttl_seconds=CATALOG_TTL_SECONDS)
     api = WebApi(service, enricher, catalog)
-    return [
+    routes: list[BaseRoute] = [
         Route("/api/providers", api.providers, methods=["GET"]),
         Route("/api/facets", api.facets, methods=["GET"]),
         Route("/api/search", api.search, methods=["GET"]),
         Route("/api/listings/{provider}/{code}", api.listing_detail, methods=["GET"]),
     ]
+    return WebSurface(routes=routes, warm_up=catalog.warm_up)
 
 
 def build_static_mount(static_dir: str | None) -> Mount | None:
