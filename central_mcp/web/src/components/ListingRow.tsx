@@ -1,4 +1,5 @@
-import { CoverImage, OfficialLink } from "@/components/ListingCard";
+import { COVER_ASPECT, CoverImage } from "@/components/CoverImage";
+import { OfficialLink } from "@/components/ListingCard";
 import { formatBrl, locationLabel, providerLabel } from "@/lib/format";
 import type { Listing } from "@/types";
 
@@ -14,7 +15,7 @@ export function ListingRow({ listing, onOpen }: ListingRowProps) {
       <button
         type="button"
         onClick={() => onOpen(listing)}
-        className="aspect-[4/3] overflow-hidden rounded-md bg-muted"
+        className={`${COVER_ASPECT} overflow-hidden rounded-md bg-muted`}
         aria-label={`Ver detalhes: ${listing.title ?? "imóvel"}`}
       >
         <CoverImage src={listing.cover_photo} alt={listing.title ?? "Foto do imóvel"} />

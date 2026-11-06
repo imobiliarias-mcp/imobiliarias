@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { Card } from "@/components/ui/card";
 import { formatBrl, locationLabel, providerLabel } from "@/lib/format";
 import type { Listing } from "@/types";
@@ -13,15 +13,13 @@ interface ListingCardProps {
 export function ListingCard({ listing, onOpen }: ListingCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden">
-      <button
-        type="button"
-        onClick={() => onOpen(listing)}
-        className="group relative aspect-[4/3] w-full bg-muted text-left"
-        aria-label={`Ver detalhes: ${listing.title ?? "imóvel"}`}
-      >
-        <CoverImage src={listing.cover_photo} alt={listing.title ?? "Foto do imóvel"} />
-        <Badge className="absolute left-2 top-2 bg-card/90">{providerLabel(listing.provider)}</Badge>
-      </button>
+      <PhotoCarousel
+        photos={listing.photos}
+        fallback={listing.cover_photo}
+        title={listing.title ?? "Imóvel"}
+        onOpen={() => onOpen(listing)}
+        overlay={<Badge className="pointer-events-none absolute left-2 top-2 bg-card/90">{providerLabel(listing.provider)}</Badge>}
+      />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <p className="text-xs text-muted-foreground">{locationLabel(listing)}</p>
         <h3 className="line-clamp-2 text-sm font-medium">{listing.title ?? "Imóvel sem título"}</h3>
@@ -41,33 +39,6 @@ export function ListingCard({ listing, onOpen }: ListingCardProps) {
         </div>
       </div>
     </Card>
-  );
-}
-
-interface CoverImageProps {
-  src: string | null;
-  alt: string;
-}
-
-/** Photo with a neutral placeholder when there is no URL or the image fails to load. */
-export function CoverImage({ src, alt }: CoverImageProps) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <span className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-        Sem foto
-      </span>
-    );
-  }
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-      className="h-full w-full object-cover transition group-hover:scale-105"
-    />
   );
 }
 
