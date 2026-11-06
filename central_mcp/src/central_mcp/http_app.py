@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
@@ -18,6 +22,8 @@ from central_mcp.config import AppConfig
 from central_mcp.limits import InFlightLimiter, TokenBucketLimiter
 from central_mcp.web.routes import build_static_mount, build_web_routes
 
+logger = logging.getLogger(__name__)
+
 
 class RateLimitMiddleware:
     """ASGI middleware applying token-bucket and in-flight request limits."""
@@ -29,7 +35,7 @@ class RateLimitMiddleware:
             rate_per_minute=config.rate_limit_per_minute,
             burst=config.rate_limit_burst,
         )
-        self._in_flight = InFlightLimiter(max_in_flight=config.max_concurrent_workers)
+        self._in_flight = InFlightLimiter(max_in_flight=config.max_in_flight_requests)
 
     def _extract_client_ip(self, scope: Scope) -> str:
         client = scope.get("client")
@@ -107,10 +113,46 @@ def create_http_app(
     routes = [Route("/healthz", healthz_endpoint)]
     routes.extend(st_app.routes)
     routes.extend(sse_app.routes)
+    warm_up: Callable[[], Awaitable[None]] | None = None
     if config.web_enabled:
-        routes.extend(build_web_routes(service or RentalService(), config))
+        surface = build_web_routes(service or RentalService(), config)
+        routes.extend(surface.routes)
+        warm_up = surface.warm_up
         static_mount = build_static_mount(config.static_dir)
         if static_mount is not None:
             routes.append(static_mount)
-    base_app = Starlette(routes=routes, lifespan=st_app.router.lifespan_context)
+    lifespan = _with_background_warm_up(st_app.router.lifespan_context, warm_up)
+    base_app = Starlette(routes=routes, lifespan=lifespan)
     return RateLimitMiddleware(base_app, config)
+
+
+def _with_background_warm_up(
+    base_lifespan: Callable[[Any], Any],
+    warm_up: Callable[[], Awaitable[None]] | None,
+) -> Callable[[Any], Any]:
+    """Run warm_up as a background task for the app's lifetime, without delaying startup."""
+
+    @asynccontextmanager
+    async def lifespan(app: Any) -> AsyncIterator[None]:
+        async with base_lifespan(app):
+            task = _start_warm_up(warm_up)
+            try:
+                yield
+            finally:
+                if task is not None:
+                    task.cancel()
+
+    return lifespan
+
+
+def _start_warm_up(warm_up: Callable[[], Awaitable[None]] | None) -> asyncio.Task[None] | None:
+    if warm_up is None:
+        return None
+    return asyncio.create_task(_run_warm_up(warm_up))
+
+
+async def _run_warm_up(warm_up: Callable[[], Awaitable[None]]) -> None:
+    try:
+        await warm_up()
+    except Exception:
+        logger.exception("background warm-up failed; data will be built on first request")

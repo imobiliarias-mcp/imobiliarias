@@ -38,6 +38,10 @@ class CachedCatalog:
         async with self._lock:
             return await self._build_once()
 
+    async def warm_up(self) -> None:
+        """Build the catalog ahead of time so the first browser request is served from cache."""
+        await self.providers()
+
     async def _build_once(self) -> list[dict[str, Any]]:
         cached = self._cache.get(CATALOG_KEY)
         if cached is not None:
