@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from typing import Any
 
 import uvicorn
 
+from central_mcp.application.service import RentalService
 from central_mcp.config import AppConfig
 from central_mcp.http_app import create_http_app
 from central_mcp.server import create_mcp_server
@@ -28,22 +30,10 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def _run_http(config: AppConfig, host: str, port: int) -> None:
-    http_cfg = AppConfig(
-        host=host,
-        port=port,
-        worker_timeout_seconds=config.worker_timeout_seconds,
-        max_worker_stdout_bytes=config.max_worker_stdout_bytes,
-        max_concurrent_workers=config.max_concurrent_workers,
-        rate_limit_per_minute=config.rate_limit_per_minute,
-        rate_limit_burst=config.rate_limit_burst,
-        trusted_proxies=config.trusted_proxies,
-        allowed_hosts=config.allowed_hosts,
-        allowed_origins=config.allowed_origins,
-        stateless_http=config.stateless_http,
-        provider_min_interval_seconds=config.provider_min_interval_seconds,
-    )
-    server = create_mcp_server()
-    app = create_http_app(server, http_cfg)
+    http_cfg = replace(config, host=host, port=port)
+    service = RentalService()
+    server = create_mcp_server(service)
+    app = create_http_app(server, http_cfg, service)
     uvicorn.run(app, host=host, port=port)
 
 

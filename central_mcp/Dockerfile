@@ -8,6 +8,17 @@ COPY central_mcp/pyproject.toml central_mcp/README.md ./
 COPY central_mcp/src ./src
 RUN pip install --no-cache-dir --target /install .
 
+FROM node:24-slim AS web-builder
+
+WORKDIR /web
+
+COPY central_mcp/web/package.json central_mcp/web/package-lock.json ./
+RUN npm ci
+
+COPY central_mcp/web/index.html central_mcp/web/vite.config.ts central_mcp/web/tsconfig.json central_mcp/web/tsconfig.app.json ./
+COPY central_mcp/web/src ./src
+RUN npm run build
+
 FROM gcr.io/distroless/python3-debian13:nonroot
 
 WORKDIR /app
@@ -18,12 +29,14 @@ ENV CENTRAL_MCP_HOST=0.0.0.0
 ENV CENTRAL_MCP_PORT=8000
 ENV CENTRAL_MCP_REPO_ROOT=/app
 ENV PYTHONPATH=/app/site-packages:/app/central_mcp/src
+ENV CENTRAL_MCP_STATIC_DIR=/app/central_mcp/web/dist
 
 # Copy installed site-packages
 COPY --from=builder /install /app/site-packages
 
-# Copy central_mcp package
-COPY central_mcp /app/central_mcp
+# Copy central_mcp package (explicit paths keep local .venv and node_modules out of the image)
+COPY central_mcp/src /app/central_mcp/src
+COPY --from=web-builder /web/dist /app/central_mcp/web/dist
 
 # Copy agency runtime code by allowlist (only existing folders)
 COPY alecorretoramg/scripts /app/alecorretoramg/scripts

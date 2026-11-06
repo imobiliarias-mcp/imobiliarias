@@ -1,6 +1,7 @@
 """Tests for central_mcp config and error hierarchy."""
 
 import pytest
+
 from central_mcp.config import AppConfig
 from central_mcp.errors import ProviderError, ProviderErrorCode
 
@@ -69,3 +70,30 @@ def test_app_config_validation_invalid_port():
 def test_app_config_validation_invalid_timeout():
     with pytest.raises(ValueError, match="worker_timeout_seconds must be positive"):
         AppConfig.from_env({"CENTRAL_MCP_WORKER_TIMEOUT": "-1"})
+
+
+def test_web_config_defaults():
+    cfg = AppConfig.from_env({})
+    assert cfg.web_enabled is True
+    assert cfg.static_dir is None
+    assert cfg.enrich_concurrency == 5
+    assert cfg.detail_cache_ttl_seconds == 900.0
+
+
+def test_web_config_env_overrides():
+    env = {
+        "CENTRAL_MCP_WEB_ENABLED": "false",
+        "CENTRAL_MCP_STATIC_DIR": "/app/central_mcp/web/dist",
+        "CENTRAL_MCP_ENRICH_CONCURRENCY": "3",
+        "CENTRAL_MCP_DETAIL_CACHE_TTL": "120",
+    }
+    cfg = AppConfig.from_env(env)
+    assert cfg.web_enabled is False
+    assert cfg.static_dir == "/app/central_mcp/web/dist"
+    assert cfg.enrich_concurrency == 3
+    assert cfg.detail_cache_ttl_seconds == 120.0
+
+
+def test_web_config_rejects_non_positive_enrich_concurrency():
+    with pytest.raises(ValueError, match="enrich_concurrency"):
+        AppConfig.from_env({"CENTRAL_MCP_ENRICH_CONCURRENCY": "0"})
