@@ -129,6 +129,22 @@ curl -i http://127.0.0.1:8000/healthz
 
 ---
 
+### 5.3 Produção em g-vps
+
+Endpoint: `https://imobiliarias.g-vps.duckdns.org/mcp`; saúde: `/healthz`.
+O arquivo `compose.prod.yaml` utiliza a rede externa `traefik_proxy`, TLS do
+Traefik e imagem pré-construída em `docker-dev`, sem publicar portas no host.
+A stack remota fica em `/opt/imobiliarias`, projeto Compose `imobiliarias`.
+
+O serviço é público, sem autenticação: não envie informações confidenciais.
+Limites: 256 MiB, 0,5 CPU, dois workers simultâneos e 30 requisições por minuto
+por cliente. O proxy confiável é o Traefik em `172.18.0.2`; confira seu IP se
+recriar a rede ou o proxy. Ambos os ambientes usam `America/Sao_Paulo`.
+
+O procedimento de release, validação e rollback está no repositório
+`~/repos/g-cloud/vps/docs/10-imobiliarias-mcp.md`.
+`Dockerfile.dockerignore` exclui credenciais e ambientes locais do build.
+
 ## 6. Ferramentas MCP Expostas
 
 | Ferramenta | Descrição | Parâmetros Principais |
