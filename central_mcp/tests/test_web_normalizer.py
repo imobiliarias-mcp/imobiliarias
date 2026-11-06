@@ -63,3 +63,11 @@ def test_description_none_when_blank_or_not_text(raw):
 )
 def test_http_url_validation(value, expected):
     assert normalize_http_url(value) == expected
+
+
+def test_cover_falls_back_to_single_media_url_from_search_payload():
+    from central_mcp.web.normalizer import normalize_cover_fallback
+
+    assert normalize_cover_fallback({"media_url": "https://cdn.test/cover.jpg"}) == ("https://cdn.test/cover.jpg",)
+    assert normalize_cover_fallback({"media_url": "javascript:x"}) == ()
+    assert normalize_cover_fallback({}) == ()

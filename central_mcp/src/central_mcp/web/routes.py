@@ -18,9 +18,11 @@ from central_mcp.errors import ProviderError
 from central_mcp.web.cache import TtlCache
 from central_mcp.web.enrichment import ListingEnricher
 from central_mcp.web.listing import WebListing
+from central_mcp.web.ordering import interleave_by_provider
 
-DEFAULT_LIMIT = 20
-MAX_LIMIT = 100
+DEFAULT_LIMIT = 60
+MAX_LIMIT = 200
+FEDERATED_FETCH_LIMIT = 1000
 PRICE_KEYS = ("rent_price", "condo_fee", "iptu", "total_price")
 
 
@@ -56,13 +58,17 @@ class WebApi:
         return JSONResponse(payload)
 
     async def search(self, request: Request) -> Response:
-        """Search all or selected providers and attach photos and descriptions."""
+        """Search all or selected providers, spread the page across agencies, attach media."""
         try:
             params = parse_search_params(request.query_params)
-            outcome = await self._service.federated_search(**params)
+            limit = params.pop("limit")
+            outcome = await self._service.federated_search(
+                **params, include_raw=True, limit=FEDERATED_FETCH_LIMIT
+            )
         except (ValueError, KeyError, ProviderError) as exc:
             return _error_response(exc)
-        listings = await self._enricher.enrich(outcome["results"])
+        page = interleave_by_provider(outcome["results"], limit)
+        listings = await self._enricher.enrich(page)
         return JSONResponse(
             {
                 "status": outcome["status"],

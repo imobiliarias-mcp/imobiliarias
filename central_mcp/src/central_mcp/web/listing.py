@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from central_mcp.web.normalizer import (
+    normalize_cover_fallback,
     normalize_description,
     normalize_http_url,
     normalize_photos,
@@ -44,7 +45,7 @@ class WebListing:
             total_price=projected.get("total_price"),
             bedrooms=projected.get("bedrooms"),
             official_url=normalize_http_url(projected.get("url")),
-            photos=normalize_photos(media_source),
+            photos=_photos_for(projected, media_source),
             description=normalize_description(media_source),
         )
 
@@ -65,3 +66,14 @@ class WebListing:
             "photos": list(self.photos),
             "description": self.description,
         }
+
+
+def _photos_for(projected: dict[str, Any], detail: dict[str, Any]) -> tuple[str, ...]:
+    """Prefer the detail gallery, then the search payload's own media, then its cover image."""
+    gallery = normalize_photos(detail)
+    if gallery:
+        return gallery
+    raw = projected.get("raw")
+    if not isinstance(raw, dict):
+        return ()
+    return normalize_photos(raw) or normalize_cover_fallback(raw)

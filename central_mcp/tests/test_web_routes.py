@@ -9,6 +9,7 @@ from central_mcp.config import AppConfig
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.http_app import create_http_app
 from central_mcp.server import create_mcp_server
+from central_mcp.web.routes import FEDERATED_FETCH_LIMIT
 
 
 class FakeService:
@@ -83,7 +84,8 @@ def test_search_passes_parsed_filters_and_returns_enriched_results():
     assert service.search_kwargs["providers"] == ["vivareal", "helenaimoveis"]
     assert service.search_kwargs["bedrooms"] == 2
     assert service.search_kwargs["max_price"] == 2000.0
-    assert service.search_kwargs["limit"] == 10
+    assert service.search_kwargs["include_raw"] is True
+    assert service.search_kwargs["limit"] == FEDERATED_FETCH_LIMIT
     body = response.json()
     assert body["status"] == "ok"
     assert body["results"][0]["cover_photo"] == "https://cdn.test/1.jpg"
@@ -95,7 +97,7 @@ def test_search_without_filters_defaults_to_all_providers():
     with _client(service) as client:
         client.get("/api/search")
     assert service.search_kwargs["providers"] is None
-    assert service.search_kwargs["limit"] == 20
+    assert service.search_kwargs["limit"] == FEDERATED_FETCH_LIMIT
 
 
 @pytest.mark.parametrize(

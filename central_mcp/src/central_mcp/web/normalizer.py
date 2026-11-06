@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 PHOTO_KEYS = ("photos", "images", "gallery")
 PHOTO_URL_KEYS = ("url", "src", "href")
+SINGLE_MEDIA_KEYS = ("media_url", "image_url", "cover_url")
 DESCRIPTION_KEYS = ("description", "descricao")
 MAX_DESCRIPTION_CHARS = 2000
 ALLOWED_SCHEMES = frozenset({"http", "https"})
@@ -65,3 +66,12 @@ def _first_photo_url_in(item: dict[str, Any]) -> str | None:
         if url is not None:
             return url
     return None
+
+
+def normalize_cover_fallback(raw: dict[str, Any]) -> tuple[str, ...]:
+    """Return the single cover image URL some search payloads carry, when it is valid."""
+    for key in SINGLE_MEDIA_KEYS:
+        url = normalize_http_url(raw.get(key))
+        if url is not None:
+            return (url,)
+    return ()

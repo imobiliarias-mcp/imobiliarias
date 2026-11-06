@@ -83,3 +83,15 @@ def test_cache_evicts_oldest_when_full():
     cache.set(("p", "3"), {"n": 3})
     assert cache.get(("p", "1")) is None
     assert cache.get(("p", "3")) == {"n": 3}
+
+
+def test_listing_photos_fall_back_to_search_raw_media_url():
+    projected = {"provider": "cabralporto", "code": "1", "raw": {"media_url": "https://cdn.test/capa.jpg"}}
+    listing = WebListing.from_parts(projected, None)
+    assert listing.photos == ("https://cdn.test/capa.jpg",)
+
+
+def test_listing_detail_gallery_wins_over_search_media_url():
+    projected = {"provider": "vivareal", "code": "1", "raw": {"media_url": "https://cdn.test/capa.jpg"}}
+    detail = {"photos": ["https://cdn.test/galeria.jpg"]}
+    assert WebListing.from_parts(projected, detail).photos == ("https://cdn.test/galeria.jpg",)
