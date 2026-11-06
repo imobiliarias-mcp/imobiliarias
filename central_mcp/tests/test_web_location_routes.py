@@ -149,3 +149,22 @@ def test_without_a_minimum_results_are_unchanged_and_unpriced_listings_stay():
     with _client(service) as client:
         response = client.get("/api/search")
     assert _codes(response) == ["vivareal-1", "vivareal-2"]
+
+
+def test_maximum_rent_is_enforced_by_the_central_even_when_a_provider_overshoots():
+    overshoot = {**_listing(1, "Centro, Timóteo"), "rent_price": 1800.0}
+    service = LocatedService([overshoot, _listing(2, "Centro, Timóteo")])
+    with _client(service) as client:
+        response = client.get("/api/search", params={"max_price": "1.500,00"})
+    assert response.status_code == 200
+    assert service.search_kwargs["max_price"] == 1500.0
+    assert _codes(response) == ["vivareal-2"]
+
+
+def test_maximum_rent_applies_before_the_page_cut():
+    crowd = [{**_listing(index, "Centro, Ipatinga"), "rent_price": 2500.0} for index in range(80)]
+    matches = [_listing(100 + index, "Centro, Timóteo") for index in range(3)]
+    service = LocatedService(crowd + matches)
+    with _client(service) as client:
+        body = client.get("/api/search", params={"max_price": "1500", "limit": "5"}).json()
+    assert [row["code"] for row in body["results"]] == ["vivareal-100", "vivareal-101", "vivareal-102"]
