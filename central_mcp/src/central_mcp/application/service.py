@@ -10,6 +10,7 @@ from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.limits import ProviderThrottle
 from central_mcp.providers.capabilities import (
     get_provider_capability,
+    resolve_city,
     validate_provider_filters,
     validate_search_request,
 )
@@ -206,7 +207,7 @@ class RentalService:
         if not cap.is_available:
             raise ProviderError(provider, ProviderErrorCode.UNAVAILABLE, cap.unavailable_reason)
         adapter = self._registry.get(provider)
-        kwargs = {"city": city or "", "min_price": min_price or 0.0, "max_price": max_price or 0.0, "bedrooms": bedrooms or 0, "property_type": property_type or "", "page": page}
+        kwargs = {"city": resolve_city(provider, city), "min_price": min_price or 0.0, "max_price": max_price or 0.0, "bedrooms": bedrooms or 0, "property_type": property_type or "", "page": page}
         async with self._semaphore, self._throttle.acquire(provider):
             raw = await asyncio.to_thread(adapter.search_rentals, **kwargs)
         raw_listings = raw.get("listings", [])
@@ -258,7 +259,7 @@ class RentalService:
             if not cap.is_available:
                 return {"provider": provider, "status": "unavailable", "count": 0, "error_code": "unavailable", "error": cap.unavailable_reason, "results": []}
             adapter = self._registry.get(provider)
-            kwargs = {"city": city or "", "min_price": min_price or 0.0, "max_price": max_price or 0.0, "bedrooms": bedrooms or 0, "property_type": property_type or "", "page": page}
+            kwargs = {"city": resolve_city(provider, city), "min_price": min_price or 0.0, "max_price": max_price or 0.0, "bedrooms": bedrooms or 0, "property_type": property_type or "", "page": page}
             async with self._semaphore, self._throttle.acquire(provider):
                 res = await asyncio.to_thread(adapter.search_rentals, **kwargs)
             listings = res.get("listings", [])
