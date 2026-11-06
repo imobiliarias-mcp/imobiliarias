@@ -25,6 +25,10 @@ FROM gcr.io/distroless/python3-debian13:nonroot
 
 WORKDIR /app
 
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.source="https://github.com/imobiliarias-mcp/imobiliarias"
+LABEL org.opencontainers.image.revision="${GIT_SHA}"
+
 ENV TZ=America/Sao_Paulo
 ENV GENERIC_TIMEZONE=America/Sao_Paulo
 ENV CENTRAL_MCP_HOST=0.0.0.0

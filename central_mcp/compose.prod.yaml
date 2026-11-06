@@ -1,0 +1,55 @@
+services:
+  central-mcp:
+    # Imagem publicada no GitHub Container Registry; IMAGE_TAG é obrigatório
+    # (commit curto ou tag imutável), para nunca subir uma versão por engano.
+    image: ghcr.io/imobiliarias-mcp/imobiliarias-central-mcp:${IMAGE_TAG:?defina IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    # Substitui o HEALTHCHECK da imagem: com CPU saturada pelo enriquecimento de
+    # buscas, uma sonda de 3 s marcava "unhealthy" e o Traefik removia a rota.
+    healthcheck:
+      test: ["CMD", "/usr/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 64
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    # Writable volume for the location catalog (uid 65532, see Dockerfile).
+    volumes:
+      - central-mcp-data:/data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: America/Sao_Paulo
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      CENTRAL_MCP_MAX_CONCURRENT_WORKERS: "2"
+      CENTRAL_MCP_MAX_IN_FLIGHT_REQUESTS: "16"
+      CENTRAL_MCP_WORKER_TIMEOUT: "30"
+      CENTRAL_MCP_RATE_LIMIT_PER_MINUTE: "30"
+      CENTRAL_MCP_RATE_LIMIT_BURST: "10"
+      CENTRAL_MCP_STATELESS_HTTP: "true"
+      CENTRAL_MCP_TRUSTED_PROXIES: "172.18.0.2"
+      CENTRAL_MCP_DATA_DIR: /data
+    networks:
+      - proxy
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik_proxy
+      traefik.http.routers.imobiliarias.rule: Host(`imobiliarias.g-vps.duckdns.org`)
+      traefik.http.routers.imobiliarias.entrypoints: websecure
+      traefik.http.routers.imobiliarias.tls.certresolver: letsencrypt
+      traefik.http.services.imobiliarias.loadbalancer.server.port: "8000"
+volumes:
+  central-mcp-data:
+
+networks:
+  proxy:
+    external: true
+    name: traefik_proxy

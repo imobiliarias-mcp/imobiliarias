@@ -133,15 +133,30 @@ curl -i http://127.0.0.1:8000/healthz
 
 Endpoint: `https://imobiliarias.g-vps.duckdns.org/mcp`; saúde: `/healthz`.
 O arquivo `compose.prod.yaml` utiliza a rede externa `traefik_proxy`, TLS do
-Traefik e imagem pré-construída em `docker-dev`, sem publicar portas no host.
-A stack remota fica em `/opt/imobiliarias`, projeto Compose `imobiliarias`.
+Traefik e a imagem publicada em `ghcr.io/imobiliarias-mcp/imobiliarias-central-mcp`,
+sem publicar portas no host. A stack remota fica em `/opt/imobiliarias`, projeto
+Compose `imobiliarias`. A imagem é pública: o g-vps a puxa sem credenciais.
 
 O serviço é público, sem autenticação: não envie informações confidenciais.
-Limites: 256 MiB, 0,5 CPU, dois workers simultâneos e 30 requisições por minuto
-por cliente. O proxy confiável é o Traefik em `172.18.0.2`; confira seu IP se
-recriar a rede ou o proxy. Ambos os ambientes usam `America/Sao_Paulo`.
+Limites: 512 MiB, 1 CPU, 64 processos, dois workers simultâneos e 30 requisições
+por minuto por cliente. O healthcheck (sonda a cada 15 s, timeout de 10 s, 5
+falhas toleradas) está declarado no compose. O proxy confiável é o Traefik em
+`172.18.0.2`; confira seu IP se recriar a rede ou o proxy. Ambos os ambientes
+usam `America/Sao_Paulo`.
 
-O procedimento de release, validação e rollback está no repositório
+Release: construa em `docker-dev`, publique no ghcr e implante por tag imutável
+(`IMAGE_TAG` é obrigatório no compose):
+
+```bash
+TAG=$(git rev-parse --short HEAD)
+docker --context docker-dev build --network host -f central_mcp/Dockerfile \
+  --build-arg GIT_SHA=$TAG \
+  -t ghcr.io/imobiliarias-mcp/imobiliarias-central-mcp:$TAG \
+  -t ghcr.io/imobiliarias-mcp/imobiliarias-central-mcp:latest .
+docker push ghcr.io/imobiliarias-mcp/imobiliarias-central-mcp:$TAG
+```
+
+O procedimento completo de implantação, validação e rollback está em
 `~/repos/g-cloud/vps/docs/10-imobiliarias-mcp.md`.
 `Dockerfile.dockerignore` exclui credenciais e ambientes locais do build.
 
