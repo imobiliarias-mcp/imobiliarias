@@ -16,6 +16,7 @@ from central_mcp.application.service import project_listing
 from central_mcp.config import AppConfig
 from central_mcp.errors import ProviderError
 from central_mcp.web.cache import TtlCache
+from central_mcp.web.catalog import CachedCatalog
 from central_mcp.web.enrichment import ListingEnricher
 from central_mcp.web.listing import WebListing
 from central_mcp.web.ordering import interleave_by_provider
@@ -23,6 +24,7 @@ from central_mcp.web.ordering import interleave_by_provider
 DEFAULT_LIMIT = 60
 MAX_LIMIT = 200
 FEDERATED_FETCH_LIMIT = 1000
+CATALOG_TTL_SECONDS = 3600
 PRICE_KEYS = ("rent_price", "condo_fee", "iptu", "total_price")
 
 
@@ -41,13 +43,14 @@ class WebSearchService(Protocol):
 class WebApi:
     """Handlers translating HTTP query/path params into service calls and JSON."""
 
-    def __init__(self, service: WebSearchService, enricher: ListingEnricher) -> None:
+    def __init__(self, service: WebSearchService, enricher: ListingEnricher, catalog: CachedCatalog) -> None:
         self._service = service
         self._enricher = enricher
+        self._catalog = catalog
 
     async def providers(self, request: Request) -> Response:
-        """List providers with coverage and supported operations."""
-        return JSONResponse(self._service.catalog())
+        """List providers with coverage and supported operations (cached, off the event loop)."""
+        return JSONResponse(await self._catalog.providers())
 
     async def facets(self, request: Request) -> Response:
         """Return the taxonomy (cities, neighborhoods, types) of one provider."""
@@ -107,7 +110,8 @@ def build_web_routes(service: WebSearchService, config: AppConfig) -> list[BaseR
     """Create /api routes sharing one detail cache and enricher."""
     cache = TtlCache(ttl_seconds=config.detail_cache_ttl_seconds)
     enricher = ListingEnricher(service, cache, concurrency=config.enrich_concurrency)
-    api = WebApi(service, enricher)
+    catalog = CachedCatalog(service, ttl_seconds=CATALOG_TTL_SECONDS)
+    api = WebApi(service, enricher, catalog)
     return [
         Route("/api/providers", api.providers, methods=["GET"]),
         Route("/api/facets", api.facets, methods=["GET"]),
