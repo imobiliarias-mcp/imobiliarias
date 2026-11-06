@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { CoverImage, OfficialLink } from "@/components/ListingCard";
+import { CoverImage } from "@/components/CoverImage";
+import { OfficialLink } from "@/components/ListingCard";
 import { formatBrl, providerLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Listing } from "@/types";
