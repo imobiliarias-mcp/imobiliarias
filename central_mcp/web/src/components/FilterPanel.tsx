@@ -137,9 +137,12 @@ export function FilterPanel({ applied, providers, locations, onApply }: FilterPa
         </select>
       </label>
 
-      <fieldset className="grid gap-2">
-        <legend className="mb-1 font-medium">Imobiliárias (nenhuma marcada = todas)</legend>
-        <div className="flex flex-wrap gap-2">
+      <details className="group rounded-md border border-border bg-card">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 font-medium">
+          Imobiliárias {draft.providers.length > 0 ? `(${draft.providers.length})` : ""}
+          <span aria-hidden="true" className="text-muted-foreground group-open:rotate-180">▾</span>
+        </summary>
+        <div className="flex flex-wrap gap-2 border-t border-border p-3">
           {providers.map((provider) => {
             const selected = draft.providers.includes(provider.provider_name);
             return (
@@ -159,7 +162,7 @@ export function FilterPanel({ applied, providers, locations, onApply }: FilterPa
             );
           })}
         </div>
-      </fieldset>
+      </details>
 
       <div className="grid grid-cols-2 gap-3">
         <Button type="button" variant="outline" onClick={clearAll} className="min-h-11">
