@@ -288,3 +288,54 @@ async def test_service_detail_includes_iptu_and_total_price():
 
 
 
+
+
+class CityRecordingAdapter:
+    """Adapter that records the city it was asked to search."""
+
+    def __init__(self) -> None:
+        self.cities: list[str] = []
+
+    def search_rentals(self, **kwargs):
+        self.cities.append(kwargs["city"])
+        return {"listings": []}
+
+
+async def test_federated_search_applies_default_city_for_city_required_provider():
+    adapter = CityRecordingAdapter()
+    registry = ProviderRegistry.create_default()
+    registry.register("epifanioimoveis", adapter)
+    service = RentalService(registry=registry)
+
+    await service.federated_search(providers=["epifanioimoveis"])
+    assert adapter.cities == ["Timóteo"]
+
+
+async def test_search_applies_default_city_when_city_missing():
+    adapter = CityRecordingAdapter()
+    registry = ProviderRegistry.create_default()
+    registry.register("niltoncorretordeimoveis", adapter)
+    service = RentalService(registry=registry)
+
+    await service.search("niltoncorretordeimoveis")
+    assert adapter.cities == ["Timóteo"]
+
+
+async def test_search_keeps_explicit_city_for_city_required_provider():
+    adapter = CityRecordingAdapter()
+    registry = ProviderRegistry.create_default()
+    registry.register("epifanioimoveis", adapter)
+    service = RentalService(registry=registry)
+
+    await service.search("epifanioimoveis", city="Ipatinga")
+    assert adapter.cities == ["Ipatinga"]
+
+
+async def test_federated_search_without_default_keeps_empty_city_for_other_providers():
+    adapter = CityRecordingAdapter()
+    registry = ProviderRegistry.create_default()
+    registry.register("vivareal", adapter)
+    service = RentalService(registry=registry)
+
+    await service.federated_search(providers=["vivareal"])
+    assert adapter.cities == [""]

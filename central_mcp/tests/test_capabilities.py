@@ -4,6 +4,7 @@ import pytest
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.providers.capabilities import (
     get_provider_capability,
+    resolve_city,
     validate_provider_filters,
     validate_search_request,
 )
@@ -67,3 +68,18 @@ def test_validate_search_request_provider_list_limits():
 
     with pytest.raises(ValueError, match="Maximum 15 providers"):
         validate_search_request(providers=[f"p{i}" for i in range(16)])
+
+
+@pytest.mark.parametrize("provider_id", ["epifanioimoveis", "niltoncorretordeimoveis"])
+def test_resolve_city_defaults_to_timoteo_for_city_required_providers(provider_id):
+    assert resolve_city(provider_id, None) == "Timóteo"
+    assert resolve_city(provider_id, "") == "Timóteo"
+    assert resolve_city(provider_id, "   ") == "Timóteo"
+
+
+def test_resolve_city_keeps_explicit_city():
+    assert resolve_city("epifanioimoveis", "Ipatinga") == "Ipatinga"
+
+
+def test_resolve_city_is_empty_for_providers_without_default():
+    assert resolve_city("vivareal", None) == ""

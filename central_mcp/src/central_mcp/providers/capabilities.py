@@ -17,7 +17,11 @@ class ProviderCapability:
     supported_filters: frozenset[str]
     is_available: bool = True
     unavailable_reason: str = ""
+    default_city: str = ""
 
+
+
+DEFAULT_CITY_FOR_CITY_REQUIRED_PROVIDERS = "Timóteo"
 
 PROVIDER_CAPABILITIES: dict[str, ProviderCapability] = {
     "alecorretoramg": ProviderCapability(
@@ -39,6 +43,7 @@ PROVIDER_CAPABILITIES: dict[str, ProviderCapability] = {
     "epifanioimoveis": ProviderCapability(
         "epifanioimoveis",
         frozenset({"city", "max_price", "bedrooms", "page"}),
+        default_city=DEFAULT_CITY_FOR_CITY_REQUIRED_PROVIDERS,
     ),
     "helenaimoveis": ProviderCapability(
         "helenaimoveis",
@@ -69,6 +74,7 @@ PROVIDER_CAPABILITIES: dict[str, ProviderCapability] = {
     "niltoncorretordeimoveis": ProviderCapability(
         "niltoncorretordeimoveis",
         frozenset({"city", "max_price", "bedrooms", "page"}),
+        default_city=DEFAULT_CITY_FOR_CITY_REQUIRED_PROVIDERS,
     ),
     "novaimobiliaria": ProviderCapability(
         "novaimobiliaria",
@@ -95,6 +101,14 @@ def get_provider_capability(provider_id: str) -> ProviderCapability:
             ),
         )
     return PROVIDER_CAPABILITIES[provider_id]
+
+
+def resolve_city(provider_id: str, city: str | None) -> str:
+    """Return the requested city, or the provider default when none was given."""
+    requested = (city or "").strip()
+    if requested:
+        return requested
+    return get_provider_capability(provider_id).default_city
 
 
 def validate_provider_filters(provider_id: str, filters: Mapping[str, Any]) -> None:
