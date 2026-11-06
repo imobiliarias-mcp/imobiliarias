@@ -110,3 +110,42 @@ def test_sale_transaction_is_rejected_until_supported():
     with _client(LocatedService([])) as client:
         response = client.get("/api/search", params={"transaction": "sale"})
     assert response.status_code == 400
+
+
+def _unpriced(index: int) -> dict[str, Any]:
+    listing = _listing(index, "Centro, Timóteo")
+    listing["rent_price"] = None
+    return listing
+
+
+def test_minimum_rent_is_enforced_by_the_central_and_not_sent_to_providers():
+    service = LocatedService([_listing(1, "Centro, Timóteo"), _listing(2, "Centro, Timóteo")])
+    with _client(service) as client:
+        response = client.get("/api/search", params={"min_price": "1002"})
+    assert response.status_code == 200
+    assert "min_price" not in service.search_kwargs
+    assert response.json()["status"] == "ok"
+    assert _codes(response) == ["vivareal-2"]
+
+
+def test_listings_without_a_price_are_hidden_when_a_minimum_is_active():
+    service = LocatedService([_unpriced(1), _listing(2, "Centro, Timóteo")])
+    with _client(service) as client:
+        response = client.get("/api/search", params={"min_price": "500"})
+    assert _codes(response) == ["vivareal-2"]
+
+
+def test_minimum_rent_applies_before_the_page_cut():
+    crowd = [_listing(index, "Centro, Ipatinga") for index in range(80)]
+    matches = [{**_listing(100 + index, "Centro, Timóteo"), "rent_price": 1100.0 + index} for index in range(3)]
+    service = LocatedService(crowd + matches)
+    with _client(service) as client:
+        body = client.get("/api/search", params={"min_price": "1080", "limit": "5"}).json()
+    assert [row["code"] for row in body["results"]] == ["vivareal-100", "vivareal-101", "vivareal-102"]
+
+
+def test_without_a_minimum_results_are_unchanged_and_unpriced_listings_stay():
+    service = LocatedService([_unpriced(1), _listing(2, "Centro, Timóteo")])
+    with _client(service) as client:
+        response = client.get("/api/search")
+    assert _codes(response) == ["vivareal-1", "vivareal-2"]
