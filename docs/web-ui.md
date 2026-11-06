@@ -27,7 +27,7 @@ Stack: Vite, React 19, TypeScript, Tailwind CSS v4. Os componentes de `src/compo
 | GET | `/api/search` | Busca federada. Filtros: `city`, `min_price`, `max_price`, `bedrooms`, `property_type`, `providers` (csv), `page`, `limit` (1–200, padrão 60) |
 | GET | `/api/listings/{provider}/{code}` | Detalhe de um imóvel com galeria completa e descrição |
 
-Resposta de `/api/search`: `status` (`ok`, `partial`, `error`), `providers` (resultado por imobiliária, para avisar quais falharam) e `results` (imóveis com `cover_photo`, `photos`, `description`, `official_url`, preços e `total_price`).
+Resposta de `/api/search`: `status` (`ok`, `partial`, `error`), `providers` (resultado por imobiliária ativa, para avisar quais falharam; imobiliárias desativadas como `imovelweb` ficam de fora) e `results` (imóveis com `cover_photo`, `photos`, `description`, `official_url`, preços e `total_price`).
 
 Erros: `400` para parâmetros inválidos, `404` para imobiliária desconhecida, `502` quando a imobiliária falha no detalhe.
 
@@ -38,6 +38,7 @@ Erros: `400` para parâmetros inválidos, `404` para imobiliária desconhecida, 
 3. Para cada imóvel da página, a foto de capa vem da galeria do detalhe; se não houver, usa a imagem (`media_url`) que a própria busca devolve. A descrição vem do detalhe.
 4. Falhas são isoladas por imóvel e por imobiliária. Detalhes bem-sucedidos ficam em cache na memória por `CENTRAL_MCP_DETAIL_CACHE_TTL` segundos.
 5. A descrição é texto puro, limitada a 2000 caracteres, e é renderizada como texto (nunca como HTML). Links são aceitos apenas em `http(s)`.
+6. `epifanioimoveis` e `niltoncorretordeimoveis` não devolvem imóveis sem cidade. Quando a busca não informa `city`, eles usam Timóteo (`default_city` em `src/central_mcp/providers/capabilities.py`). Cidade informada explicitamente é sempre respeitada.
 
 ## Variáveis de ambiente
 
@@ -52,7 +53,7 @@ As variáveis de rate limit (`CENTRAL_MCP_RATE_LIMIT_PER_MINUTE`, `CENTRAL_MCP_R
 
 ## Limitações conhecidas
 
-- **Fotos:** só `vivareal` e `veraimobiliaria` expõem galeria no detalhe; várias outras imobiliárias trazem apenas uma imagem na busca, e algumas não trazem nenhuma. Esses imóveis aparecem com "Sem foto" e o link oficial.
-- **Imobiliárias com falha:** `arthusoimoveis` e `helenaimoveis` falham na busca (erros nos próprios submódulos), `imovelweb` exige navegador (indisponível). A UI avisa quais não responderam.
+- **Fotos:** `vivareal`, `veraimobiliaria`, `helenaimoveis` e `arthusoimoveis` expõem galeria no detalhe; várias outras imobiliárias trazem apenas uma imagem na busca, e algumas não trazem nenhuma. Esses imóveis aparecem com "Sem foto" e o link oficial.
+- **Imobiliária desativada:** `imovelweb` exige navegador (Cloudflare/Patchright) e está oculto da UI, do seletor e do aviso. Continua disponível pelo MCP. O aviso de falhas da UI mostra apenas falhas reais.
 - **Primeira busca:** cada imóvel da página sem cache gera uma chamada de detalhe. Com a página padrão de 60 imóveis, a busca leva em torno de 10–15 s.
 - **Dados:** os imóveis vêm como estão nas imobiliárias, incluindo comerciais e títulos vazios.
