@@ -103,7 +103,7 @@ export function App() {
       </header>
 
       <div className="grid gap-6 md:grid-cols-[18rem_1fr] lg:grid-cols-[19rem_1fr]">
-        <aside className="hidden md:block md:sticky md:top-4 md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:rounded-xl md:border md:border-border md:bg-card md:p-4">
+        <aside className="hidden md:block md:self-start md:sticky md:top-4 md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:rounded-xl md:border md:border-border md:bg-card md:p-4">
           <FilterPanel key={query} applied={applied.filters} providers={providers} locations={locations} onApply={applyFilters} />
         </aside>
 
