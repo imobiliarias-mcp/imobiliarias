@@ -16,6 +16,7 @@ from starlette.staticfiles import StaticFiles
 from central_mcp.application.service import project_listing
 from central_mcp.config import AppConfig
 from central_mcp.errors import ProviderError
+from central_mcp.providers.capabilities import get_provider_capability
 from central_mcp.web.cache import TtlCache
 from central_mcp.web.catalog import CachedCatalog
 from central_mcp.web.enrichment import ListingEnricher
@@ -51,7 +52,8 @@ class WebApi:
 
     async def providers(self, request: Request) -> Response:
         """List providers with coverage and supported operations (cached, off the event loop)."""
-        return JSONResponse(await self._catalog.providers())
+        catalog = await self._catalog.providers()
+        return JSONResponse([entry for entry in catalog if _is_visible_provider(entry["provider_name"])])
 
     async def facets(self, request: Request) -> Response:
         """Return the taxonomy (cities, neighborhoods, types) of one provider."""
@@ -73,10 +75,11 @@ class WebApi:
             return _error_response(exc)
         page = interleave_by_provider(outcome["results"], limit)
         listings = await self._enricher.enrich(page)
+        providers = [entry for entry in outcome["providers"] if _is_visible_provider(entry["provider"])]
         return JSONResponse(
             {
-                "status": outcome["status"],
-                "providers": outcome["providers"],
+                "status": _overall_status([entry["status"] for entry in providers]),
+                "providers": providers,
                 "results": [listing.to_dict() for listing in listings],
             }
         )
@@ -144,6 +147,20 @@ def _detail_projection(provider: str, code: str, detail: dict[str, Any]) -> dict
         if detail.get(key) is not None:
             projected[key] = detail[key]
     return projected
+
+
+def _is_visible_provider(provider_id: str) -> bool:
+    """Hide providers that are disabled in the capability matrix from the browser UI."""
+    return get_provider_capability(provider_id).is_available
+
+
+def _overall_status(statuses: list[str]) -> str:
+    """Summarize provider outcomes as ok, error, or partial."""
+    if statuses and all(status == "ok" for status in statuses):
+        return "ok"
+    if not any(status == "ok" for status in statuses):
+        return "error"
+    return "partial"
 
 
 def _error_response(exc: Exception) -> JSONResponse:

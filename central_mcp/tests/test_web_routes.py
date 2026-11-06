@@ -192,3 +192,43 @@ def test_missing_static_dir_is_ignored(tmp_path):
     with _client(FakeService(), cfg) as client:
         assert client.get("/api/providers").status_code == 200
         assert client.get("/").status_code == 404
+
+
+class CatalogWithImovelwebService(FakeService):
+    """Catalog and federated results that include the unavailable imovelweb provider."""
+
+    def catalog(self) -> list[dict[str, Any]]:
+        return [
+            {"provider_name": "vivareal", "coverage_region": "Vale do Aço"},
+            {"provider_name": "imovelweb", "coverage_region": "Nacional"},
+        ]
+
+    async def federated_search(self, **kwargs: Any) -> dict[str, Any]:
+        outcome = await super().federated_search(**kwargs)
+        outcome["providers"] = [
+            {"provider": "vivareal", "status": "ok", "count": 1, "error_code": None, "error": None},
+            {
+                "provider": "imovelweb",
+                "status": "unavailable",
+                "count": 0,
+                "error_code": "unavailable",
+                "error": "Browser required (Cloudflare/Patchright)",
+            },
+        ]
+        outcome["status"] = "partial"
+        return outcome
+
+
+def test_providers_endpoint_hides_unavailable_providers():
+    with _client(CatalogWithImovelwebService()) as client:
+        response = client.get("/api/providers")
+    names = [entry["provider_name"] for entry in response.json()]
+    assert names == ["vivareal"]
+
+
+def test_search_hides_unavailable_provider_outcomes_and_recomputes_status():
+    with _client(CatalogWithImovelwebService()) as client:
+        response = client.get("/api/search")
+    body = response.json()
+    assert [entry["provider"] for entry in body["providers"]] == ["vivareal"]
+    assert body["status"] == "ok"
