@@ -51,6 +51,7 @@ COPY alecorretoramg/scripts /app/alecorretoramg/scripts
 COPY alecorretoramg/src /app/alecorretoramg/src
 
 COPY arthusoimoveis/scripts /app/arthusoimoveis/scripts
+COPY arthusoimoveis/arthuso /app/arthusoimoveis/arthuso
 
 COPY cabralporto/scripts /app/cabralporto/scripts
 COPY cabralporto/src /app/cabralporto/src
@@ -75,6 +76,7 @@ COPY marcioimoveis/scripts /app/marcioimoveis/scripts
 COPY marcioimoveis/src /app/marcioimoveis/src
 
 COPY minascaixaimoveis/scripts /app/minascaixaimoveis/scripts
+COPY minascaixaimoveis/minascaixa /app/minascaixaimoveis/minascaixa
 
 COPY niltoncorretordeimoveis/scripts /app/niltoncorretordeimoveis/scripts
 COPY niltoncorretordeimoveis/src /app/niltoncorretordeimoveis/src
