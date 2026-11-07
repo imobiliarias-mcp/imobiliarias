@@ -29,6 +29,7 @@ class AppConfig:
     static_dir: str | None = None
     enrich_concurrency: int = 5
     detail_cache_ttl_seconds: float = 900.0
+    search_cache_ttl_seconds: float = 600.0
     data_dir: Path | None = None
 
     @classmethod
@@ -54,6 +55,7 @@ class AppConfig:
         static_dir = source.get("CENTRAL_MCP_STATIC_DIR") or None
         enrich_concurrency = int(source.get("CENTRAL_MCP_ENRICH_CONCURRENCY", "5"))
         detail_cache_ttl = float(source.get("CENTRAL_MCP_DETAIL_CACHE_TTL", "900"))
+        search_cache_ttl = float(source.get("CENTRAL_MCP_SEARCH_CACHE_TTL", "600"))
         data_dir = source.get("CENTRAL_MCP_DATA_DIR") or None
         return cls(
             host=host,
@@ -69,6 +71,7 @@ class AppConfig:
             static_dir=static_dir,
             enrich_concurrency=enrich_concurrency,
             detail_cache_ttl_seconds=detail_cache_ttl,
+            search_cache_ttl_seconds=search_cache_ttl,
             data_dir=Path(data_dir) if data_dir else None,
         )
 
@@ -92,3 +95,5 @@ class AppConfig:
             raise ValueError("enrich_concurrency must be positive")
         if self.detail_cache_ttl_seconds < 0:
             raise ValueError("detail_cache_ttl_seconds must not be negative")
+        if self.search_cache_ttl_seconds < 0:
+            raise ValueError("search_cache_ttl_seconds must not be negative")

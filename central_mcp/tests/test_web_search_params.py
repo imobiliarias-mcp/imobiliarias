@@ -33,5 +33,37 @@ def test_blank_price_means_no_price_filter():
     assert parse_search_params({"max_price": "   "})["max_price"] is None
 
 
-def test_default_limit_keeps_enrichment_small():
-    assert parse_search_params({})["limit"] == 24
+def test_default_page_size_is_twelve():
+    assert parse_search_params({})["limit"] == 12
+
+
+def test_page_is_the_central_page_number_defaulting_to_first():
+    assert parse_search_params({})["page"] == 1
+    assert parse_search_params({"page": "3"})["page"] == 3
+
+
+def test_sort_defaults_to_lowest_total_price():
+    assert parse_search_params({})["sort"] == "total_asc"
+
+
+@pytest.mark.parametrize("raw", ["total_asc", "total_desc"])
+def test_sort_accepts_supported_orders(raw):
+    assert parse_search_params({"sort": raw})["sort"] == raw
+
+
+@pytest.mark.parametrize("raw", ["rent_asc", "TOTAL_ASC", "random"])
+def test_sort_rejects_unknown_order_in_portuguese(raw):
+    with pytest.raises(ValueError, match="sort deve ser"):
+        parse_search_params({"sort": raw})
+
+
+def test_refresh_defaults_to_false_and_accepts_flags():
+    assert parse_search_params({})["refresh"] is False
+    assert parse_search_params({"refresh": "1"})["refresh"] is True
+    assert parse_search_params({"refresh": "true"})["refresh"] is True
+    assert parse_search_params({"refresh": "0"})["refresh"] is False
+
+
+def test_refresh_rejects_other_values():
+    with pytest.raises(ValueError, match="refresh deve ser"):
+        parse_search_params({"refresh": "sim"})

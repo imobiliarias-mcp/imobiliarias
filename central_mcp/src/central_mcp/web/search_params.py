@@ -6,10 +6,12 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-DEFAULT_LIMIT = 24
+DEFAULT_LIMIT = 12
 MAX_LIMIT = 200
 SUPPORTED_TRANSACTIONS = ("rent",)
 DEFAULT_TRANSACTION = "rent"
+SUPPORTED_SORTS = ("total_asc", "total_desc")
+DEFAULT_SORT = "total_asc"
 
 
 def parse_search_params(query: Mapping[str, str]) -> dict[str, Any]:
@@ -25,6 +27,8 @@ def parse_search_params(query: Mapping[str, str]) -> dict[str, Any]:
         "property_type": _optional_text(query.get("property_type")),
         "page": _bounded_int(query.get("page"), "page", default=1, minimum=1, maximum=10_000),
         "limit": _bounded_int(query.get("limit"), "limit", default=DEFAULT_LIMIT, minimum=1, maximum=MAX_LIMIT),
+        "sort": _sort(query.get("sort")),
+        "refresh": _flag(query.get("refresh"), "refresh"),
     }
 
 
@@ -41,6 +45,24 @@ def _transaction(raw: str | None) -> str:
     if value not in SUPPORTED_TRANSACTIONS:
         raise ValueError(f"transaction must be one of: {', '.join(SUPPORTED_TRANSACTIONS)}")
     return value
+
+
+def _sort(raw: str | None) -> str:
+    value = _optional_text(raw) or DEFAULT_SORT
+    if value not in SUPPORTED_SORTS:
+        raise ValueError(f"sort deve ser um de: {', '.join(SUPPORTED_SORTS)}")
+    return value
+
+
+def _flag(raw: str | None, name: str) -> bool:
+    value = _optional_text(raw)
+    if value is None:
+        return False
+    if value.lower() in ("1", "true"):
+        return True
+    if value.lower() in ("0", "false"):
+        return False
+    raise ValueError(f"{name} deve ser true ou false")
 
 
 def _optional_text(raw: str | None) -> str | None:

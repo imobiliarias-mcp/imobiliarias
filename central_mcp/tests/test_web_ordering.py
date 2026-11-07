@@ -1,33 +1,43 @@
-"""Tests for interleaving search results across providers before applying the page limit."""
+"""Tests for ordering the whole search result by total monthly price before paging."""
 
-from central_mcp.web.ordering import interleave_by_provider
-
-
-def _item(provider: str, number: int) -> dict:
-    return {"provider": provider, "code": str(number)}
+from central_mcp.web.ordering import order_by_total_price
 
 
-def test_interleave_gives_every_provider_a_slot_in_the_first_page():
-    results = [_item("a", 1), _item("a", 2), _item("a", 3), _item("b", 1), _item("c", 1)]
-    picked = interleave_by_provider(results, limit=3)
-    assert [(item["provider"], item["code"]) for item in picked] == [("a", "1"), ("b", "1"), ("c", "1")]
+def _item(code: str, total: float | None) -> dict:
+    return {"provider": "a", "code": code, "total_price": total}
 
 
-def test_interleave_keeps_each_providers_own_order():
-    results = [_item("a", 1), _item("a", 2), _item("b", 1), _item("b", 2)]
-    picked = interleave_by_provider(results, limit=10)
-    assert [(item["provider"], item["code"]) for item in picked] == [("a", "1"), ("b", "1"), ("a", "2"), ("b", "2")]
+def _codes(items: list[dict]) -> list[str]:
+    return [item["code"] for item in items]
 
 
-def test_interleave_limit_larger_than_results_returns_all():
-    results = [_item("a", 1), _item("b", 1)]
-    assert len(interleave_by_provider(results, limit=50)) == 2
+def test_ascending_puts_cheapest_total_first():
+    items = [_item("x", 2000.0), _item("y", 1000.0), _item("z", 1500.0)]
+    assert _codes(order_by_total_price(items, descending=False)) == ["y", "z", "x"]
 
 
-def test_interleave_empty_input_returns_empty():
-    assert interleave_by_provider([], limit=5) == []
+def test_descending_puts_most_expensive_total_first():
+    items = [_item("x", 2000.0), _item("y", 1000.0), _item("z", 1500.0)]
+    assert _codes(order_by_total_price(items, descending=True)) == ["x", "z", "y"]
 
 
-def test_interleave_single_provider_keeps_order():
-    results = [_item("a", 1), _item("a", 2), _item("a", 3)]
-    assert [item["code"] for item in interleave_by_provider(results, limit=2)] == ["1", "2"]
+def test_listings_without_total_price_go_last_in_both_directions():
+    items = [_item("none", None), _item("cheap", 900.0), _item("dear", 3000.0)]
+    assert _codes(order_by_total_price(items, descending=False)) == ["cheap", "dear", "none"]
+    assert _codes(order_by_total_price(items, descending=True)) == ["dear", "cheap", "none"]
+
+
+def test_equal_prices_keep_their_input_order_in_both_directions():
+    items = [_item("first", 1000.0), _item("second", 1000.0)]
+    assert _codes(order_by_total_price(items, descending=False)) == ["first", "second"]
+    assert _codes(order_by_total_price(items, descending=True)) == ["first", "second"]
+
+
+def test_empty_input_returns_empty():
+    assert order_by_total_price([], descending=False) == []
+
+
+def test_does_not_mutate_the_input_list():
+    items = [_item("x", 2000.0), _item("y", 1000.0)]
+    order_by_total_price(items, descending=False)
+    assert _codes(items) == ["x", "y"]
