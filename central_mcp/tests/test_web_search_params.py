@@ -31,3 +31,7 @@ def test_price_rejects_invalid_text(raw):
 
 def test_blank_price_means_no_price_filter():
     assert parse_search_params({"max_price": "   "})["max_price"] is None
+
+
+def test_default_limit_keeps_enrichment_small():
+    assert parse_search_params({})["limit"] == 24

@@ -6,7 +6,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-DEFAULT_LIMIT = 60
+DEFAULT_LIMIT = 24
 MAX_LIMIT = 200
 SUPPORTED_TRANSACTIONS = ("rent",)
 DEFAULT_TRANSACTION = "rent"

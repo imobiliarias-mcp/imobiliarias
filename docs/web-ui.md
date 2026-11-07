@@ -25,7 +25,7 @@ Stack: Vite, React 19, TypeScript, Tailwind CSS v4. Os componentes de `src/compo
 | GET | `/api/providers` | Catálogo das imobiliárias |
 | GET | `/api/facets?provider=` | Taxonomia (cidades, bairros, tipos) de uma imobiliária |
 | GET | `/api/locations` | Cidades e bairros já conhecidos (`cities`: `key`, `name`; `neighborhoods`: `key`, `name`, `city_key`) |
-| GET | `/api/search` | Busca federada. Filtros: `city` (chave ou nome), `neighborhoods` (csv de chaves), `transaction` (só `rent`; `sale` retorna 400), `min_price`, `max_price`, `bedrooms`, `property_type`, `providers` (csv), `page`, `limit` (1–200, padrão 60) |
+| GET | `/api/search` | Busca federada. Filtros: `city` (chave ou nome), `neighborhoods` (csv de chaves), `transaction` (só `rent`; `sale` retorna 400), `min_price`, `max_price`, `bedrooms`, `property_type`, `providers` (csv), `page`, `limit` (1–200, padrão 24) |
 | GET | `/api/listings/{provider}/{code}` | Detalhe de um imóvel com galeria completa e descrição |
 
 Resposta de `/api/search`: `hidden_without_neighborhood` (imóveis ocultos pelo filtro de bairro por não terem bairro informado), `status` (`ok`, `partial`, `error`), `providers` (resultado por imobiliária ativa, para avisar quais falharam; imobiliárias desativadas como `imovelweb` ficam de fora) e `results` (imóveis com `cover_photo`, `photos`, `description`, `official_url`, preços e `total_price`).
@@ -73,5 +73,5 @@ As variáveis de rate limit (`CENTRAL_MCP_RATE_LIMIT_PER_MINUTE`, `CENTRAL_MCP_R
 
 - **Fotos:** `vivareal`, `veraimobiliaria`, `helenaimoveis` e `arthusoimoveis` expõem galeria no detalhe; várias outras imobiliárias trazem apenas uma imagem na busca, e algumas não trazem nenhuma. Esses imóveis aparecem com "Sem foto" e o link oficial.
 - **Imobiliária desativada:** `imovelweb` exige navegador (Cloudflare/Patchright) e está oculto da UI, do seletor e do aviso. Continua disponível pelo MCP. O aviso de falhas da UI mostra apenas falhas reais.
-- **Primeira busca:** cada imóvel da página sem cache gera uma chamada de detalhe. Com a página padrão de 60 imóveis, a busca leva em torno de 10–15 s.
+- **Primeira busca:** cada imóvel da página sem cache gera uma chamada de detalhe. O enriquecimento tem orçamento de 8 s por busca: detalhes que não chegam nesse prazo são descartados (o imóvel aparece sem foto e com o link oficial) e continuam no cache para a próxima vez. Com a página padrão de 24 imóveis, a busca costuma levar poucos segundos para o enriquecimento; a espera pelas imobiliárias não tem esse limite.
 - **Dados:** os imóveis vêm como estão nas imobiliárias, incluindo comerciais e títulos vazios.
