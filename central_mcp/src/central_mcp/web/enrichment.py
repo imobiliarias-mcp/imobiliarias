@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 RECOVERABLE_ERRORS = (ProviderError, RuntimeError, OSError, ValueError, KeyError, TypeError, AttributeError)
 
+# Total time the search waits for media; slow detail calls are abandoned after this.
+DEFAULT_BUDGET_SECONDS = 8.0
+
 
 class DetailSource(Protocol):
     """Anything able to fetch one provider listing detail (RentalService satisfies it)."""
@@ -25,19 +28,33 @@ class DetailSource(Protocol):
 class ListingEnricher:
     """Fetches details concurrently for search results, caching successful ones."""
 
-    def __init__(self, source: DetailSource, cache: TtlCache, concurrency: int) -> None:
+    def __init__(
+        self,
+        source: DetailSource,
+        cache: TtlCache,
+        concurrency: int,
+        budget_seconds: float = DEFAULT_BUDGET_SECONDS,
+    ) -> None:
         self._source = source
         self._cache = cache
         self._concurrency = concurrency
+        self._budget_seconds = budget_seconds
 
     async def enrich(self, projected: list[dict[str, Any]]) -> list[WebListing]:
-        """Return web listings in the same order, each with media when available."""
+        """Return web listings in the same order; details still pending at the budget are dropped."""
         semaphore = asyncio.Semaphore(self._concurrency)
-        return list(await asyncio.gather(*(self._enrich_one(semaphore, item) for item in projected)))
+        details = await self._details_within_budget(semaphore, projected)
+        return [WebListing.from_parts(item, detail) for item, detail in zip(projected, details)]
 
-    async def _enrich_one(self, semaphore: asyncio.Semaphore, projected: dict[str, Any]) -> WebListing:
-        detail = await self._detail_for(semaphore, projected)
-        return WebListing.from_parts(projected, detail)
+    async def _details_within_budget(
+        self, semaphore: asyncio.Semaphore, projected: list[dict[str, Any]]
+    ) -> list[dict[str, Any] | None]:
+        if not projected:
+            return []
+        tasks = [asyncio.create_task(self._detail_for(semaphore, item)) for item in projected]
+        done, pending = await asyncio.wait(tasks, timeout=self._budget_seconds)
+        await _cancel_and_wait(pending)
+        return [task.result() if task in done else None for task in tasks]
 
     async def _detail_for(self, semaphore: asyncio.Semaphore, projected: dict[str, Any]) -> dict[str, Any] | None:
         provider = projected.get("provider")
@@ -60,3 +77,11 @@ class ListingEnricher:
             return None
         self._cache.set(key, detail)
         return detail
+
+
+async def _cancel_and_wait(tasks: set[asyncio.Task]) -> None:
+    """Cancel unfinished detail tasks and wait until they have unwound."""
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
