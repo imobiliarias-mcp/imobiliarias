@@ -1,8 +1,8 @@
 /** Per-browser conveniences only: a failing or blocked storage must never break the page. */
 
 const LAST_SEARCH_KEY = "central-mcp:last-search";
-const RESULTS_PREFIX = "central-mcp:results:";
-const RESULTS_INDEX_KEY = "central-mcp:results-index";
+const RESULTS_PREFIX = "central-mcp:results-v2:";
+const RESULTS_INDEX_KEY = "central-mcp:results-index-v2";
 const RESULTS_TTL_MS = 15 * 60 * 1000;
 const RESULTS_MAX_ENTRIES = 12;
 

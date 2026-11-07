@@ -1,3 +1,4 @@
+import type { SortOrder } from "@/lib/sort";
 import type { LocationCatalog, ProviderInfo, SearchFilters, SearchResponse } from "@/types";
 
 export class ApiError extends Error {
@@ -34,9 +35,9 @@ export function fetchLocations(signal?: AbortSignal): Promise<LocationCatalog> {
   return getJson<LocationCatalog>("/api/locations", signal);
 }
 
-/** Build the query string for /api/search from filters; blank values are dropped. */
-export function buildSearchQuery(filters: SearchFilters): string {
-  const params = new URLSearchParams({ transaction: "rent" });
+/** Build the query string for /api/search from filters and sort order; blank values are dropped. */
+export function buildSearchQuery(filters: SearchFilters, sort: SortOrder): string {
+  const params = new URLSearchParams({ transaction: "rent", sort });
   const entries: Array<[string, string]> = [
     ["city", filters.city.trim()],
     ["min_price", filters.minPrice.trim()],
@@ -57,6 +58,17 @@ export function buildSearchQuery(filters: SearchFilters): string {
   return params.toString();
 }
 
-export function searchListings(query: string, signal?: AbortSignal): Promise<SearchResponse> {
-  return getJson<SearchResponse>(`/api/search?${query}`, signal);
+/** Fetch one page of a query; refresh asks the server to bypass its cached provider outcome. */
+export function searchListings(
+  query: string,
+  page: number,
+  signal?: AbortSignal,
+  refresh = false,
+): Promise<SearchResponse> {
+  const params = new URLSearchParams(query);
+  params.set("page", String(page));
+  if (refresh) {
+    params.set("refresh", "1");
+  }
+  return getJson<SearchResponse>(`/api/search?${params.toString()}`, signal);
 }
