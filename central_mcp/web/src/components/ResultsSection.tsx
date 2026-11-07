@@ -1,11 +1,18 @@
 import { ListingCard } from "@/components/ListingCard";
 import { ListingRow } from "@/components/ListingRow";
+import { LoadMore } from "@/components/LoadMore";
+import { resultKey } from "@/lib/use-paged-search";
 import { SORT_LABELS, type SortOrder } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import type { Listing, ViewMode } from "@/types";
 
 interface ResultsSectionProps {
   listings: Listing[];
+  total: number;
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMoreError: string | null;
+  onLoadMore: () => void;
   activeLabels: string[];
   sortOrder: SortOrder;
   view: ViewMode;
@@ -42,16 +49,19 @@ export function ResultsSection(props: ResultsSectionProps) {
           ))}
         </div>
       )}
+      {listings.length > 0 && (
+        <LoadMore hasMore={props.hasMore} loading={props.loadingMore} error={props.loadMoreError} onLoadMore={props.onLoadMore} />
+      )}
     </section>
   );
 }
 
-function ResultsToolbar({ listings, activeLabels, sortOrder, view, onSortChange, onViewChange }: ResultsSectionProps) {
+function ResultsToolbar({ listings, total, activeLabels, sortOrder, view, onSortChange, onViewChange }: ResultsSectionProps) {
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-medium" aria-live="polite">
-          {listings.length} imóvel(is) encontrado(s)
+          {listings.length} de {total} imóvel(is)
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-sm">
@@ -115,8 +125,4 @@ function EmptyState({ onClearFilters }: { onClearFilters: () => void }) {
       </button>
     </div>
   );
-}
-
-function resultKey(listing: Listing): string {
-  return `${listing.provider}-${listing.code ?? listing.official_url ?? listing.title}`;
 }

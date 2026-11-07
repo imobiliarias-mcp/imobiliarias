@@ -36,6 +36,10 @@ export interface SearchResponse {
   providers: ProviderOutcome[];
   results: Listing[];
   hidden_without_neighborhood: number;
+  page: number;
+  page_size: number;
+  total: number;
+  has_more: boolean;
 }
 
 export interface City {

@@ -1,21 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { FilterDrawer } from "@/components/FilterDrawer";
 import { FilterPanel } from "@/components/FilterPanel";
 import { ListingDialog } from "@/components/ListingDialog";
 import { ProviderStatusBanner } from "@/components/ProviderStatusBanner";
 import { ResultsSection } from "@/components/ResultsSection";
 import { Skeleton } from "@/components/ui/skeleton";
-import { buildSearchQuery, fetchLocations, fetchProviders, searchListings } from "@/lib/api";
-import { loadLastSearch, readCachedResults, saveLastSearch, writeCachedResults } from "@/lib/storage";
-import { sortListings, type SortOrder } from "@/lib/sort";
+import { buildSearchQuery, fetchLocations, fetchProviders } from "@/lib/api";
+import { loadLastSearch, saveLastSearch } from "@/lib/storage";
+import { type SortOrder } from "@/lib/sort";
+import { usePagedSearch } from "@/lib/use-paged-search";
 import { readUrlState, writeUrlState, type AppUrlState } from "@/lib/url-state";
-import type { Listing, LocationCatalog, ProviderInfo, SearchFilters, SearchResponse, ViewMode } from "@/types";
+import type { Listing, LocationCatalog, ProviderInfo, SearchFilters, ViewMode } from "@/types";
 
-const SKELETON_COUNT = 6;
+const SKELETON_COUNT = 12;
 const EMPTY_LOCATIONS: LocationCatalog = { cities: [], neighborhoods: [] };
-
-/** Results shown for one query, plus how many listings the neighborhood filter hid. */
-type SearchState = SearchResponse;
+const FIRST_SEARCH_NOTICE = "Buscando em todas as imobiliárias… na primeira vez pode levar até 2 minutos.";
 
 /** Rental finder: filters live in the URL, results are cached per query, layout adapts to screen width. */
 export function App() {
@@ -23,15 +22,11 @@ export function App() {
   const [applied, setApplied] = useState<AppUrlState>(initial);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [locations, setLocations] = useState<LocationCatalog>(EMPTY_LOCATIONS);
-  const [search, setSearch] = useState<SearchState | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [retryToken, setRetryToken] = useState(0);
   const [selected, setSelected] = useState<Listing | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
 
-  const query = buildSearchQuery(applied.filters);
+  const query = buildSearchQuery(applied.filters, applied.sortOrder);
+  const paged = usePagedSearch(query, refreshLocations);
   const activeCount = countActive(applied.filters);
 
   useEffect(() => {
@@ -47,39 +42,7 @@ export function App() {
     return () => controller.abort();
   }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const cached = readCachedResults<SearchResponse>(query);
-    setSearch(cached);
-    setError(null);
-    setLoading(true);
-    const startedAt = performance.now();
-    searchListings(query, controller.signal)
-      .then((response) => {
-        writeCachedResults(query, response);
-        setSearch(response);
-        setElapsedMs(performance.now() - startedAt);
-        refreshLocations();
-      })
-      .catch((cause: unknown) => {
-        if (!controller.signal.aborted) {
-          setError(describeError(cause, "Falha na busca. Tente novamente."));
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
-    return () => controller.abort();
-  }, [query, retryToken]);
-
-  const sorted = useMemo(
-    () => sortListings(search?.results ?? [], applied.sortOrder),
-    [search, applied.sortOrder],
-  );
-
-  /** The search records newly seen cities and neighborhoods on the server; pull them for the pickers. */
+  /** Pull the cities and neighborhoods the search just recorded on the server, for the pickers. */
   function refreshLocations() {
     fetchLocations().then(setLocations).catch(() => undefined);
   }
@@ -107,29 +70,39 @@ export function App() {
         </aside>
 
         <main className="grid min-w-0 content-start gap-4 pb-24 md:pb-0">
-          {error && (
+          {paged.error && (
             <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive px-4 py-3 text-sm text-destructive">
-              <span>{error}</span>
-              <button type="button" onClick={() => setRetryToken((value) => value + 1)} className="min-h-11 rounded-md border border-destructive px-4">
+              <span>{paged.error}</span>
+              <button type="button" onClick={paged.retry} className="min-h-11 rounded-md border border-destructive px-4">
                 Tentar de novo
               </button>
             </div>
           )}
 
-          {search && <ProviderStatusBanner outcomes={search.providers} />}
+          {paged.response && <ProviderStatusBanner outcomes={paged.response.providers} />}
 
-          {!search && loading && <LoadingGrid />}
-
-          {search && (
+          {!paged.response && paged.loading && (
             <>
-              {loading && <p className="text-xs text-muted-foreground" aria-live="polite">Atualizando resultados…</p>}
-              {!loading && elapsedMs !== null && <p className="text-xs text-muted-foreground">Busca em {(elapsedMs / 1000).toFixed(1)} s</p>}
+              <p className="text-sm text-muted-foreground" aria-live="polite">{FIRST_SEARCH_NOTICE}</p>
+              <LoadingGrid />
+            </>
+          )}
+
+          {paged.response && (
+            <>
+              {paged.loading && <p className="text-xs text-muted-foreground" aria-live="polite">Atualizando resultados…</p>}
+              {!paged.loading && paged.elapsedMs !== null && <p className="text-xs text-muted-foreground">Busca em {(paged.elapsedMs / 1000).toFixed(1)} s</p>}
               <ResultsSection
-                listings={sorted}
+                listings={paged.items}
+                total={paged.response.total}
+                hasMore={paged.response.has_more}
+                loadingMore={paged.loadingMore}
+                loadMoreError={paged.loadMoreError}
+                onLoadMore={paged.loadMore}
                 activeLabels={activeLabels(applied.filters, locations, providers)}
                 sortOrder={applied.sortOrder}
                 view={applied.view}
-                hiddenWithoutNeighborhood={search.hidden_without_neighborhood}
+                hiddenWithoutNeighborhood={paged.response.hidden_without_neighborhood}
                 onSortChange={(order: SortOrder) => setApplied((current) => ({ ...current, sortOrder: order }))}
                 onViewChange={(view: ViewMode) => setApplied((current) => ({ ...current, view }))}
                 onOpen={setSelected}
@@ -200,9 +173,3 @@ function LoadingGrid() {
   );
 }
 
-function describeError(cause: unknown, fallback: string): string {
-  if (cause instanceof Error && cause.message) {
-    return cause.message;
-  }
-  return fallback;
-}

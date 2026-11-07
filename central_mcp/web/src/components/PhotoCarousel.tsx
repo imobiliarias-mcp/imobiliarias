@@ -10,7 +10,7 @@ interface PhotoCarouselProps {
   overlay?: ReactNode;
 }
 
-/** Swipeable 4:3 photo strip for a listing card; arrows and dots for mouse users. */
+/** Swipeable 4:3 photo strip; only the current and adjacent photos are downloaded, arrows and dots for mouse users. */
 export function PhotoCarousel({ photos, fallback, title, onOpen, overlay }: PhotoCarouselProps) {
   const slides: Array<string | null> = photos.length > 0 ? photos : [fallback];
   const trackRef = useRef<HTMLDivElement>(null);
@@ -43,7 +43,7 @@ export function PhotoCarousel({ photos, fallback, title, onOpen, overlay }: Phot
             aria-label={`Ver detalhes: ${title}`}
             className="relative h-full w-full shrink-0 snap-start"
           >
-            <CoverImage src={src} alt={title} />
+            <CoverImage src={src} alt={title} deferred={Math.abs(position - index) > 1} />
           </button>
         ))}
       </div>

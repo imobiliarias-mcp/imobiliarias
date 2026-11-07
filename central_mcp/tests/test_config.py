@@ -97,3 +97,17 @@ def test_web_config_env_overrides():
 def test_web_config_rejects_non_positive_enrich_concurrency():
     with pytest.raises(ValueError, match="enrich_concurrency"):
         AppConfig.from_env({"CENTRAL_MCP_ENRICH_CONCURRENCY": "0"})
+
+
+def test_search_cache_ttl_defaults_to_ten_minutes():
+    assert AppConfig.from_env({}).search_cache_ttl_seconds == 600.0
+
+
+def test_search_cache_ttl_reads_env_and_allows_zero():
+    cfg = AppConfig.from_env({"CENTRAL_MCP_SEARCH_CACHE_TTL": "0"})
+    assert cfg.search_cache_ttl_seconds == 0.0
+
+
+def test_search_cache_ttl_rejects_negative_values():
+    with pytest.raises(ValueError, match="search_cache_ttl_seconds"):
+        AppConfig.from_env({"CENTRAL_MCP_SEARCH_CACHE_TTL": "-1"})

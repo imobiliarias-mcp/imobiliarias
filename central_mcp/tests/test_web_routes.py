@@ -9,7 +9,7 @@ from central_mcp.config import AppConfig
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.http_app import create_http_app
 from central_mcp.server import create_mcp_server
-from central_mcp.web.routes import FEDERATED_FETCH_LIMIT
+from central_mcp.web.search_flow import FEDERATED_FETCH_LIMIT
 
 
 class FakeService:
