@@ -1,5 +1,8 @@
 """Tests for enriching search results with detail media, isolating per-item failures."""
 
+import asyncio
+import time
+
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.web.cache import TtlCache
 from central_mcp.web.enrichment import ListingEnricher
@@ -80,3 +83,32 @@ async def test_failed_detail_is_not_cached():
     await enricher.enrich([_item("vivareal", "1")])
     await enricher.enrich([_item("vivareal", "1")])
     assert len(service.calls) == 2
+
+
+class _SlowService:
+    """Detail source where some listings take far longer than the enrichment budget."""
+
+    def __init__(self, delays: dict[str, float]) -> None:
+        self._delays = delays
+
+    async def detail(self, provider: str, property_code: str) -> dict:
+        await asyncio.sleep(self._delays[property_code])
+        return {"photos": [f"https://cdn.test/{property_code}.jpg"]}
+
+
+async def test_enrich_returns_within_budget_without_waiting_for_slow_details():
+    service = _SlowService({"fast": 0.0, "slow": 30.0})
+    enricher = ListingEnricher(service, TtlCache(ttl_seconds=60), concurrency=2, budget_seconds=0.2)
+    started = time.monotonic()
+    fast, slow = await enricher.enrich([_item("a", "fast"), _item("a", "slow")])
+    assert time.monotonic() - started < 2.0
+    assert fast.photos == ("https://cdn.test/fast.jpg",)
+    assert slow.photos == ()
+    assert slow.official_url == "https://site.test/x"
+
+
+async def test_enrich_keeps_details_finished_before_budget_expires():
+    service = _SlowService({"a": 0.0, "b": 0.0})
+    enricher = ListingEnricher(service, TtlCache(ttl_seconds=60), concurrency=2, budget_seconds=5.0)
+    listings = await enricher.enrich([_item("p", "a"), _item("p", "b")])
+    assert [item.photos for item in listings] == [("https://cdn.test/a.jpg",), ("https://cdn.test/b.jpg",)]
