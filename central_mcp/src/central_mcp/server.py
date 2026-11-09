@@ -24,7 +24,7 @@ def _register_catalog_tool(server: MCPServer, service: RentalService) -> None:
 
     @server.tool(
         name="list_rental_providers",
-        description="List all 15 integrated real estate agencies and portals, coverage regions, and capabilities.",
+        description="List all 16 integrated real estate agencies and portals, coverage regions, and capabilities.",
     )
     async def list_rental_providers() -> list[dict[str, Any]]:
         return service.catalog()

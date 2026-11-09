@@ -78,6 +78,9 @@ COPY marcioimoveis/src /app/marcioimoveis/src
 COPY minascaixaimoveis/scripts /app/minascaixaimoveis/scripts
 COPY minascaixaimoveis/minascaixa /app/minascaixaimoveis/minascaixa
 
+COPY newhouseimobiliaria/scripts /app/newhouseimobiliaria/scripts
+COPY newhouseimobiliaria/src /app/newhouseimobiliaria/src
+
 COPY niltoncorretordeimoveis/scripts /app/niltoncorretordeimoveis/scripts
 COPY niltoncorretordeimoveis/src /app/niltoncorretordeimoveis/src
 

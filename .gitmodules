@@ -46,3 +46,6 @@
 [submodule "docs/sot/modelcontextprotocol"]
 	path = docs/sot/modelcontextprotocol
 	url = https://github.com/modelcontextprotocol/modelcontextprotocol.git
+[submodule "newhouseimobiliaria"]
+	path = newhouseimobiliaria
+	url = https://github.com/imobiliarias-mcp/newhouseimobiliaria.git

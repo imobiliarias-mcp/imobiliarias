@@ -1,6 +1,6 @@
 # Central Rental Research MCP Server (Python)
 
-Servidor Model Context Protocol (MCP) central para pesquisa federada e individual de aluguéis em 15 imobiliárias e portais do Vale do Aço (Timóteo, Coronel Fabriciano, Ipatinga) e nacionais.
+Servidor Model Context Protocol (MCP) central para pesquisa federada e individual de aluguéis em 16 imobiliárias e portais do Vale do Aço (Timóteo, Coronel Fabriciano, Ipatinga) e nacionais.
 
 Desenvolvido com o SDK oficial `mcp` (`mcp[cli]>=2.3.0`), seguindo rigorosamente os princípios de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**.
 
@@ -12,7 +12,7 @@ O servidor central é estruturado em camadas desacopladas:
 
 * `central_mcp.domain`: Value Objects (`ProviderId`, `ListingPrice`, `PropertyCode`, `RoomCount`, `PageNumber`, `PublicUrl`), Entidades (`RentalListing`, `ProviderSpec`) e Coleções First-Class (`RentalListingCollection`, `ProviderCatalog`).
 * `central_mcp.providers`:
-  * `ProviderRegistry`: Gerenciamento e resolução dos 15 provedores.
+  * `ProviderRegistry`: Gerenciamento e resolução dos 16 provedores.
   * `LocalVenvAdapter` e `central_mcp.worker`: Execução de ferramentas via subprocesso isolado com protocolo JSON stdin/stdout e kill de process group em caso de timeout.
   * `capabilities`: Matriz de capacidades por provedor (`supported_filters`, checagem de limites e validação antecipada de requisições).
 * `central_mcp.limits`: Limitador de taxa Token Bucket por IP (`X-Forwarded-For` com proxies confiáveis), teto global de concorrência e throttle de concorrência 1 + intervalo mínimo por provedor.
@@ -23,7 +23,7 @@ O servidor central é estruturado em camadas desacopladas:
 
 ---
 
-## 2. Provedores Suportados (15 Agências)
+## 2. Provedores Suportados (16 Agências)
 
 1. `alecorretoramg` — Alê Corretora MG (WordPress + Crocoblock)
 2. `arthusoimoveis` — Arthuso Imóveis (Kenlo / InGaia)
@@ -36,10 +36,14 @@ O servidor central é estruturado em camadas desacopladas:
 9. `imovelweb` — Imovelweb (Navent RPLIS/RPFIC) *(Requer automação com navegador/Cloudflare; reportado como `unavailable` em ambiente distroless)*
 10. `marcioimoveis` — Márcio Imóveis (WordPress + RealHomes)
 11. `minascaixaimoveis` — Minas Caixa Imóveis (Kenlo / InGaia)
-12. `niltoncorretordeimoveis` — Nilton Corretor (ImobiBrasil)
-13. `novaimobiliaria` — Nova Imobiliária (Regional)
-14. `veraimobiliaria` — Vera Imobiliária (Regional)
-15. `vivareal` — Viva Real (Grupo OLX)
+12. `newhouseimobiliaria` — New House Imobiliária (Praedium; somente aluguel em Timóteo e Coronel Fabriciano)
+13. `niltoncorretordeimoveis` — Nilton Corretor (ImobiBrasil)
+14. `novaimobiliaria` — Nova Imobiliária (Regional)
+15. `veraimobiliaria` — Vera Imobiliária (Regional)
+16. `vivareal` — Viva Real (Grupo OLX)
+
+Uma requisição aceita no máximo 20 provedores (`MAX_PROVIDERS_PER_REQUEST`), então selecionar todos os
+16 de uma vez é válido. Esse limite foi ampliado de 15 para 20 ao incluir a New House.
 
 ---
 
@@ -164,7 +168,7 @@ O procedimento completo de implantação, validação e rollback está em
 
 | Ferramenta | Descrição | Parâmetros Principais |
 | :--- | :--- | :--- |
-| `list_rental_providers` | Lista as 15 imobiliárias e portais integrados, regiões atendidas e capacidades. | Nenhum |
+| `list_rental_providers` | Lista as 16 imobiliárias e portais integrados, regiões atendidas e capacidades. | Nenhum |
 | `search_rentals` | Pesquisa imóveis em uma imobiliária específica com filtros validados. | `provider` (obrigatório), `city`, `min_price`, `max_price`, `bedrooms`, `property_type`, `page`, `limit`, `include_raw` |
 | `federated_search_rentals` | Pesquisa simultânea e federada em múltiplas imobiliárias (ou em todas). Retorna `status` (`ok`, `partial`, `error`), resumo por provedor e resultados consolidados. | `providers` (opcional), `city`, `min_price`, `max_price`, `bedrooms`, `property_type`, `page`, `limit`, `include_raw` |
 | `get_rental_detail` | Obtém detalhes completos, especificações e galeria de fotos de um imóvel. | `provider` (obrigatório), `property_code` (obrigatório) |

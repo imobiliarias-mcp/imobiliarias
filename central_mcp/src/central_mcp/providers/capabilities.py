@@ -22,6 +22,8 @@ class ProviderCapability:
 
 
 DEFAULT_CITY_FOR_CITY_REQUIRED_PROVIDERS = "Timóteo"
+# Selecting every registered provider at once (16 today) must stay valid in the UI.
+MAX_PROVIDERS_PER_REQUEST = 20
 
 PROVIDER_CAPABILITIES: dict[str, ProviderCapability] = {
     "alecorretoramg": ProviderCapability(
@@ -70,6 +72,10 @@ PROVIDER_CAPABILITIES: dict[str, ProviderCapability] = {
     "minascaixaimoveis": ProviderCapability(
         "minascaixaimoveis",
         frozenset({"city", "max_price", "bedrooms", "page"}),
+    ),
+    "newhouseimobiliaria": ProviderCapability(
+        "newhouseimobiliaria",
+        frozenset({"city", "min_price", "max_price", "bedrooms", "property_type", "page"}),
     ),
     "niltoncorretordeimoveis": ProviderCapability(
         "niltoncorretordeimoveis",
@@ -189,8 +195,8 @@ def _validate_strings(city: str | None, property_type: str | None) -> None:
 def _validate_provider_list(
     providers: list[str], known: set[str] | None = None
 ) -> None:
-    if len(providers) > 15:
-        raise ValueError(f"Maximum 15 providers allowed, got {len(providers)}")
+    if len(providers) > MAX_PROVIDERS_PER_REQUEST:
+        raise ValueError(f"Maximum {MAX_PROVIDERS_PER_REQUEST} providers allowed, got {len(providers)}")
     valid_set = known if known is not None else set(PROVIDER_CAPABILITIES.keys())
     seen: set[str] = set()
     for pid in providers:
