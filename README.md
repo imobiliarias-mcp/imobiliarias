@@ -1,13 +1,13 @@
 # Pesquisa de aluguéis — Vale do Aço
 
-Monorepo de clientes e pesquisas de APIs públicas de 15 imobiliárias e portais.
+Monorepo de clientes e pesquisas de APIs públicas de 16 imobiliárias e portais.
 Cada diretório mantém seu próprio pacote Python, documentação e testes.
 
 ## Servidor MCP Central (Python)
 
 O servidor central está implementado em Python em [`central_mcp/`](file:///home/samuelcaldas/repos/imobiliarias/central_mcp), utilizando o SDK oficial `mcp` (MCPServer / FastMCP).
 
-Ele segue rigorosamente os padrões de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**, suportando múltiplos transportes (`stdio`, `sse` e `streamable-http`) e orquestrando as 15 agências com isolamento de dependências via ambientes virtuais dedicados (`.venv`).
+Ele segue rigorosamente os padrões de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**, suportando múltiplos transportes (`stdio`, `sse` e `streamable-http`) e orquestrando as 16 agências com isolamento de dependências via ambientes virtuais dedicados (`.venv`).
 
 Para iniciar o servidor:
 ```bash
@@ -29,7 +29,7 @@ cd central_mcp
 Os IDs públicos correspondem aos diretórios: `alecorretoramg`,
 `arthusoimoveis`, `cabralporto`, `casalinhares`, `epifanioimoveis`,
 `helenaimoveis`, `imobiliariaportalmg`, `imobiliariavaleinvest`, `imovelweb`,
-`marcioimoveis`, `minascaixaimoveis`, `niltoncorretordeimoveis`,
+`marcioimoveis`, `minascaixaimoveis`, `newhouseimobiliaria`, `niltoncorretordeimoveis`,
 `novaimobiliaria`, `veraimobiliaria` e `vivareal`.
 
 O checkout atual combina gitlinks e fontes locais não rastreadas.

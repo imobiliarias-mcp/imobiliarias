@@ -3,6 +3,7 @@
 import pytest
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.providers.capabilities import (
+    PROVIDER_CAPABILITIES,
     get_provider_capability,
     resolve_city,
     validate_provider_filters,
@@ -66,8 +67,22 @@ def test_validate_search_request_provider_list_limits():
     with pytest.raises(ValueError, match="Unknown provider"):
         validate_search_request(providers=["fake_agency"])
 
-    with pytest.raises(ValueError, match="Maximum 15 providers"):
-        validate_search_request(providers=[f"p{i}" for i in range(16)])
+    with pytest.raises(ValueError, match="Maximum 20 providers"):
+        validate_search_request(providers=[f"p{i}" for i in range(21)])
+
+
+def test_validate_search_request_accepts_every_registered_provider_at_once():
+    every_provider = sorted(PROVIDER_CAPABILITIES.keys())
+    assert len(every_provider) == 16
+    validate_search_request(providers=every_provider, known_providers=set(every_provider))
+
+
+def test_newhouse_declares_the_filters_its_site_supports():
+    capability = get_provider_capability("newhouseimobiliaria")
+    assert capability.supported_filters == frozenset(
+        {"city", "min_price", "max_price", "bedrooms", "property_type", "page"}
+    )
+    assert capability.default_city == ""
 
 
 @pytest.mark.parametrize("provider_id", ["epifanioimoveis", "niltoncorretordeimoveis"])

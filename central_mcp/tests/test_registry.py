@@ -4,10 +4,11 @@ import pytest
 from central_mcp.providers.registry import ProviderRegistry
 
 
-def test_registry_contains_all_15_providers():
-    """Verify registry knows about all 15 rental providers."""
+def test_registry_contains_all_16_providers():
+    """Verify registry knows about all 16 rental providers, including New House."""
     registry = ProviderRegistry.create_default()
-    assert len(registry.all_provider_ids()) == 15
+    assert len(registry.all_provider_ids()) == 16
+    assert "newhouseimobiliaria" in registry.all_provider_ids()
     assert "cabralporto" in registry.all_provider_ids()
     assert "vivareal" in registry.all_provider_ids()
     assert "casalinhares" in registry.all_provider_ids()
@@ -18,7 +19,7 @@ def test_registry_catalog():
     """Verify catalog method produces structured provider specs."""
     registry = ProviderRegistry.create_default()
     cat = registry.catalog()
-    assert len(cat) == 15
+    assert len(cat) == 16
     cabral = cat.get("cabralporto")
     assert cabral is not None
     assert cabral.identifier.value == "cabralporto"

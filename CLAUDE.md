@@ -92,6 +92,7 @@ cd <agency_directory> && .venv/bin/python scripts/run_facets.py
 | `imovelweb` | Imovelweb | Navent / Imovelweb API (`RPLIS` listing engine, `RPFIC` detail engine) | National portal |
 | `marcioimoveis` | Márcio Imóveis | WordPress 6.x + RealHomes Theme + Easy Real Estate (ERE) plugin | Timóteo & Vale do Aço |
 | `minascaixaimoveis` | Minas Caixa Imóveis | InGaia / Kenlo SaaS platform | Vale do Aço |
+| `newhouseimobiliaria` | New House Imobiliária | Praedium (Laravel, `cdn3.praedium.com.br`) | Timóteo & Coronel Fabriciano |
 | `niltoncorretordeimoveis`| Nilton Corretor | ImobiBrasil SaaS platform | Vale do Aço |
 | `novaimobiliaria` | Nova Imobiliária | Regional portal platform | Vale do Aço |
 | `veraimobiliaria` | Vera Imobiliária | Regional portal platform | Vale do Aço |

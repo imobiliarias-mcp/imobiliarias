@@ -22,6 +22,7 @@ PROVIDER_MAP: dict[str, str] = {
     "imovelweb": "ImovelwebMcpAdapter",
     "marcioimoveis": "MarcioMcpAdapter",
     "minascaixaimoveis": "MinasCaixaMcpAdapter",
+    "newhouseimobiliaria": "NewHouseMcpAdapter",
     "niltoncorretordeimoveis": "NiltonMcpAdapter",
     "novaimobiliaria": "NovaMcpAdapter",
     "veraimobiliaria": "VeraMcpAdapter",
