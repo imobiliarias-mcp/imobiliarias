@@ -21,6 +21,8 @@ def call(method: str, path: str, body: dict | None = None) -> dict:
     request = urllib.request.Request(f"{base}/api/{path}", data=data, method=method)
     request.add_header("x-api-key", os.environ["DOKPLOY_API_KEY"])
     request.add_header("Content-Type", "application/json")
+    # O Cloudflare na frente do Dokploy recusa o User-Agent padrão do Python (403).
+    request.add_header("User-Agent", "imobiliarias-release-workflow/1.0")
     with urllib.request.urlopen(request, timeout=60) as response:
         return json.loads(response.read() or b"{}")
 
