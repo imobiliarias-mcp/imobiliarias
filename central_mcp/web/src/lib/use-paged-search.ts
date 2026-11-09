@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { searchListings } from "@/lib/api";
+import { sortByTotalPrice, type SortOrder } from "@/lib/sort";
 import { readCachedResults, writeCachedResults } from "@/lib/storage";
 import type { Listing, SearchResponse } from "@/types";
 
@@ -28,7 +29,7 @@ interface PagedState {
 const EMPTY_STATE: PagedState = { response: null, items: [] };
 
 /** First page of a query (cached per browser) plus on-demand later pages, for one filter and sort set. */
-export function usePagedSearch(query: string, onFirstPage: () => void): PagedSearch {
+export function usePagedSearch(query: string, sortOrder: SortOrder, onFirstPage: () => void): PagedSearch {
   const [state, setState] = useState<PagedState>(EMPTY_STATE);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -39,6 +40,7 @@ export function usePagedSearch(query: string, onFirstPage: () => void): PagedSea
 
   const stateRef = useRef(state);
   const queryRef = useRef(query);
+  const sortRef = useRef(sortOrder);
   const loadingRef = useRef(false);
   const loadingMoreRef = useRef(false);
   const generation = useRef(0);
@@ -47,6 +49,7 @@ export function usePagedSearch(query: string, onFirstPage: () => void): PagedSea
   const onFirstPageRef = useRef(onFirstPage);
   stateRef.current = state;
   queryRef.current = query;
+  sortRef.current = sortOrder;
   onFirstPageRef.current = onFirstPage;
 
   useEffect(() => {
@@ -56,7 +59,11 @@ export function usePagedSearch(query: string, onFirstPage: () => void): PagedSea
     const forceRefresh = refreshNext.current;
     refreshNext.current = false;
     const cached = forceRefresh ? null : readCachedResults<SearchResponse>(query);
-    setState(cached && isPagedResponse(cached) ? { response: cached, items: cached.results } : EMPTY_STATE);
+    setState(
+      cached && isPagedResponse(cached)
+        ? { response: cached, items: sortByTotalPrice(cached.results, sortOrder) }
+        : EMPTY_STATE,
+    );
     setError(null);
     setLoadMoreError(null);
     setLoadingMore(false);
@@ -70,7 +77,7 @@ export function usePagedSearch(query: string, onFirstPage: () => void): PagedSea
           return;
         }
         writeCachedResults(query, response);
-        setState({ response, items: response.results });
+        setState({ response, items: sortByTotalPrice(response.results, sortOrder) });
         setElapsedMs(performance.now() - startedAt);
         onFirstPageRef.current();
       })
@@ -104,7 +111,10 @@ export function usePagedSearch(query: string, onFirstPage: () => void): PagedSea
         if (current !== generation.current) {
           return;
         }
-        setState((previous) => ({ response, items: mergeListings(previous.items, response.results) }));
+        setState((previous) => ({
+          response,
+          items: sortByTotalPrice(mergeListings(previous.items, response.results), sortRef.current),
+        }));
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted && current === generation.current) {

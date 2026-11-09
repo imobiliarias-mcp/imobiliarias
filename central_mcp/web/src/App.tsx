@@ -26,7 +26,7 @@ export function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const query = buildSearchQuery(applied.filters, applied.sortOrder);
-  const paged = usePagedSearch(query, refreshLocations);
+  const paged = usePagedSearch(query, applied.sortOrder, refreshLocations);
   const activeCount = countActive(applied.filters);
 
   useEffect(() => {
