@@ -4,154 +4,114 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Monorepo of a **modular real estate aggregator portal** for the Vale do Aço region (Timóteo, Coronel Fabriciano, and Ipatinga) and national portals. The goal is one portal that aggregates rentals from every agency. MCP is one of its interfaces, not the goal. See `docs/adr/0001-portal-agregador-modular.md`.
+A **modular real estate aggregator portal** for the Vale do Aço region (Timóteo, Coronel Fabriciano, Ipatinga) and national portals. One portal aggregates rentals from every agency. MCP is one of its interfaces, not the goal. See `docs/adr/0001-portal-agregador-modular.md`.
 
-Each agency directory is an independent module: a Python package (`src/`) that reverse-engineers the agency's site, paired with an Object Calisthenics provider adapter (`scripts/mcp/tools.py`) that implements the fixed provider contract consumed by the core (`central_mcp/`). The core serves the web portal, an HTTP API and the MCP interface from the same services.
+- `central_mcp/` is the core. It serves the web portal, an HTTP API and the MCP interface from the same services.
+- Each agency directory is a provider module: a Python package (`src/`) that reverse-engineers the agency's site, plus an adapter (`scripts/mcp/tools.py`) that implements the provider contract the core consumes.
+- `central_mcp/` and every provider module are git submodules.
+- The provider list and each agency's platform are in `central_mcp/README.md` §2. Don't copy them here.
 
 ## Commands
 
-### Environment Setup
-
-Each subdirectory manages its own virtual environment using `uv` with Python >= 3.11 (typically Python 3.13 or 3.14):
+### Core (`central_mcp/`)
 
 ```bash
-cd <agency_directory>
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev]"
+cd central_mcp
+.venv/bin/pytest                          # full suite
+.venv/bin/pytest tests/<file>.py          # one file
+.venv/bin/pytest tests/<file>.py -k <name>  # one test
+.venv/bin/ruff check src tests            # lint (8 pre-existing I001 import-order findings in tests)
+
+# Run the server (HTTP on port 8000; health check at /healthz)
+.venv/bin/python -m central_mcp.main --transport http
+.venv/bin/python -m central_mcp.main --help   # transports: stdio, sse, streamable-http, http
+
+# Local dev stack in Docker (build context is the repo root)
+docker compose -f central_mcp/compose.dev.yaml up -d
 ```
 
-### Running Tests
+Main environment variables (`src/central_mcp/config.py`):
 
-Execute tests from within the respective agency directory:
+- `CENTRAL_MCP_REPO_ROOT`: where provider module directories are resolved (`providers/registry.py`).
+- `CENTRAL_MCP_STATIC_DIR`: built UI to serve (`web/dist`).
+- `CENTRAL_MCP_DATA_DIR`: writable data, e.g. the location catalog.
+- `CENTRAL_MCP_TRUSTED_PROXIES`: proxies whose `X-Forwarded-For` the rate limiter trusts.
+- `CENTRAL_MCP_WORKER_TIMEOUT`, `CENTRAL_MCP_MAX_CONCURRENT_WORKERS`: subprocess limits.
+- `CENTRAL_MCP_*_CACHE_TTL`, `CENTRAL_MCP_ENRICH_CONCURRENCY`: cache TTLs and detail-enrichment fan-out.
+
+### Frontend (`central_mcp/web/`)
 
 ```bash
-# Run all tests in a subproject
-cd <agency_directory> && .venv/bin/pytest
-
-# Run tests in verbose mode
-cd <agency_directory> && .venv/bin/pytest -v
-
-# Run a single test file
-cd <agency_directory> && .venv/bin/pytest tests/test_domain.py
-
-# Run a specific test function
-cd <agency_directory> && .venv/bin/pytest tests/test_domain.py -k test_price_range_validation
-
-# Run standalone zero-dependency test runner (no pytest required)
-cd <agency_directory> && .venv/bin/python scripts/run_tests.py
-
-# Run tests across all agency subprojects from repo root
-for dir in */ ; do [ -d "$dir/tests" ] && echo "=== $dir ===" && (cd "$dir" && .venv/bin/pytest); done
+cd central_mcp/web
+npm ci              # lockfile is committed; the Dockerfile also uses `npm ci`
+npm run dev         # Vite; proxies /api to the backend on :8000
+npm run build       # runs `tsc -b` before `vite build`
+npm run lint        # `tsc -b --noEmit`
 ```
 
-### Linting & Code Quality
+### Provider modules
 
 ```bash
-# Lint current subproject or entire repository
+git clone --recurse-submodules <repo>     # or: git submodule update --init
+cd <module>
+uv venv && uv pip install -e ".[dev]"     # Python >= 3.11
+.venv/bin/pytest
 ruff check .
-
-# Automatically apply safe lint fixes
-ruff check --fix .
 ```
 
-### Live Research & CLI Verification
+Modules that have `tests/test_live_integration.py` hit the real agency site. Run it on purpose; the unit suite must not depend on the network. Do not assume every module has CLI scripts. Check its `scripts/` and its README.
 
-Each agency provides standalone CLI utilities in `scripts/`:
+## Architecture: how a search flows
 
-```bash
-# Run live API verification suite
-cd <agency_directory> && .venv/bin/python scripts/verify_research.py
+1. The web routes (`web/routes.py`, through `SearchFlow`) and the MCP server (`server.py`) both use `RentalService` (`application/service.py`).
+2. `providers/capabilities.py` validates the request against the per-provider filter matrix. It also enforces `MAX_PROVIDERS_PER_REQUEST`. A provider marked `is_available=False` is not queried, which is why the UI lists 15 of 16 providers.
+3. `ProviderRegistry` (`providers/registry.py`, `PROVIDER_MAP`) resolves the provider id to its adapter class.
+4. `LocalVenvAdapter` (`providers/venv_adapter.py`) runs the call in a subprocess: `sys.executable -m central_mcp.worker`.
+5. The worker (`worker.py`) imports the module's `scripts/mcp/tools.py`, which calls `src/<module>_research`.
 
-# Query listings via CLI
-cd <agency_directory> && .venv/bin/python scripts/run_search.py --city <city> --bedrooms <n>
+Points to keep in mind:
 
-# Fetch full property specifications and photo gallery by ID or reference code
-cd <agency_directory> && .venv/bin/python scripts/run_property_detail.py <id_or_code>
+- The subprocess uses the **core's interpreter**. `PYTHONPATH` points at the module directory. A module's `.venv` is only for its own tests.
+- Everything crossing the worker is JSON (`json.dumps(result, default=str)`). Adapters must return plain types.
+- The adapter contract is four methods: `search_rentals`, `get_property_detail`, `get_facets`, `get_provider_info`.
+- A search listing carries `id`, `code` (the value `get_property_detail` accepts), `title`, `price`, `url`, `media_url`, `city`, `neighborhood`, `bedrooms`, `bathrooms`.
+- A detail adds `description`, `photos`, `condo_fee`, `iptu`.
+- `total_price` is computed in `domain/entities.py` from the rent plus extra fees. Providers may supply it directly.
 
-# Discover taxonomy facets (cities, neighborhoods, property types)
-cd <agency_directory> && .venv/bin/python scripts/run_facets.py
-```
+Web layer (`central_mcp/src/central_mcp/web/`):
 
----
+- `search_flow.py` (`SearchFlow`): fans out to providers and combines results.
+- `search_cache.py` and `cache.py` (`TtlCache`): search-outcome and listing caches.
+- `enrichment.py` (`ListingEnricher`): fetches detail for listings that lack a photo or description.
+- `normalizer.py`: turns HTML descriptions into text.
+- `location_catalog.py` and `catalog.py`: location catalog.
+- `result_page.py`: paginates. `has_more` is computed here, not by the provider.
+- `ordering.py`: sorting, including by total price (listings without a price go last).
 
-## High-Level Architecture & Structure
+### Docker image and release
 
-### Monorepo Agency & Engine Map
+- `central_mcp/Dockerfile` is built from the repo root. It copies only `scripts/` and `src/` (or the module's own package directory) of each module, by explicit list. **A new module needs its own `COPY` lines** or it won't exist in the image.
+- A `v*` tag triggers `.github/workflows/release.yml`. It clones the submodules, audits the image for leaked secrets, pushes to ghcr, deploys to Dokploy and checks `/healthz`.
 
-| Directory | Agency / Portal | Underlying SaaS Platform / Engine | Primary Focus |
-| :--- | :--- | :--- | :--- |
-| `alecorretoramg` | Alê Corretora MG | WordPress + Crocoblock JetEngine (`jet-engine/todos`) & JetSmartFilters | Timóteo & Vale do Aço |
-| `arthusoimoveis` | Arthuso Imóveis | InGaia / Kenlo SaaS platform | Vale do Aço |
-| `cabralporto` | Cabral Porto Imóveis | Tecimob headless REST API (`x-domain: cabralportoimoveis.com.br`) | Timóteo & Vale do Aço |
-| `casalinhares` | Casa Linhares | Imobzi SaaS API (`api.imobzi.app`) | Vale do Aço |
-| `epifanioimoveis` | Epifânio Imóveis | ImobiBrasil SaaS platform (`s0/funcoes_busca.php`, template `t27`) | Timóteo & Vale do Aço |
-| `helenaimoveis` | Helena Imóveis | ImobiBrasil SaaS platform | Timóteo & Vale do Aço |
-| `imobiliariaportalmg` | Portal Imóveis MG | Orangeimob SaaS platform (`orangeimob.com.br`, template `tema_2`) | Timóteo regional |
-| `imobiliariavaleinvest` | Imobiliária Vale Invest | Grupo Union / USO (Union Softwares / BuscaImo / Praedium) | Vale do Aço |
-| `imovelweb` | Imovelweb | Navent / Imovelweb API (`RPLIS` listing engine, `RPFIC` detail engine) | National portal |
-| `marcioimoveis` | Márcio Imóveis | WordPress 6.x + RealHomes Theme + Easy Real Estate (ERE) plugin | Timóteo & Vale do Aço |
-| `minascaixaimoveis` | Minas Caixa Imóveis | InGaia / Kenlo SaaS platform | Vale do Aço |
-| `newhouseimobiliaria` | New House Imobiliária | Praedium (Laravel, `cdn3.praedium.com.br`) | Timóteo & Coronel Fabriciano |
-| `niltoncorretordeimoveis`| Nilton Corretor | ImobiBrasil SaaS platform | Vale do Aço |
-| `novaimobiliaria` | Nova Imobiliária | Regional portal platform | Vale do Aço |
-| `veraimobiliaria` | Vera Imobiliária | Regional portal platform | Vale do Aço |
-| `vivareal` | Viva Real | Grupo OLX / VivaReal internal API | National portal |
+## Adding a provider module
 
-### Dual-Layer Subproject Architecture
+Follow the checklist in `central_mcp/README.md` §1.1. In short: create the module with `src/`, `scripts/mcp/tools.py` and tests; register it in `PROVIDER_MAP`; add its capability entry in `capabilities.py`; add its `COPY` lines to the Dockerfile; add it as a submodule. Don't duplicate the checklist here.
 
-Every agency directory maintains two strictly decoupled layers sharing domain concepts:
+## Conventions
 
-```
-<agency_directory>/
-├── pyproject.toml              # Build metadata (Hatchling) & dependencies (httpx, beautifulsoup4, pytest)
-├── src/<agency>_research/      # Layer 1: Core installable Python package
-│   ├── client.py               # Facade coordinating network transport and parser suite
-│   ├── collaborators.py        # Gateway and parser suite abstractions
-│   ├── domain/                 # Models, criteria, value objects
-│   ├── infrastructure/         # HTTP client (httpx) and query/URL builders
-│   └── parsers/                # Search result, detail, and facet parsers
-├── scripts/                    # Layer 2: MCP Provider & Object Calisthenics Adapter
-│   ├── interfaces/provider.py  # Protocols: RentalSearchCapability, RentalDetailCapability, RentalProviderProtocol
-│   ├── domain/                 # Calisthenics domain: value_objects, criteria, entities, collections, exceptions
-│   ├── client/                 # Calisthenics client: configuration, http_transport, query_builder, parsers
-│   ├── providers/              # Provider implementation conforming to RentalProviderProtocol
-│   ├── mcp/tools.py            # FastMCP tool adapter (<agency>_search_rentals, <agency>_get_property_detail, etc.)
-│   ├── run_search.py           # CLI: execute rental search
-│   ├── run_property_detail.py  # CLI: inspect property details
-│   ├── run_facets.py           # CLI: inspect search taxonomy/facets
-│   ├── run_tests.py            # Standalone zero-dependency test runner
-│   └── verify_research.py      # Live endpoint integration verifier
-├── tests/                      # Unit and live integration test suites
-│   ├── test_client.py
-│   ├── test_domain.py
-│   ├── test_parsers.py
-│   ├── test_query_builder.py (or test_url_builder.py)
-│   └── test_live_integration.py
-├── docs/                       # Reverse-engineering documentation & specifications
-│   ├── api-research.md         # Full reverse-engineered endpoint and parameter matrix
-│   ├── api_reference.md        # cURL recipes and payload samples
-│   ├── sot/                    # Single Source of Truth API specifications
-│   └── adr/                    # Architecture Decision Records (e.g. 0001-rental-search-mcp-module-design.md)
-└── tmp/                        # Offline sample HTML fixtures, API responses, and reverse-engineered JS
-```
+- **Object Calisthenics** applies to `scripts/` (adapters) in every module:
+  - one indent level per method; no `else` (use guard clauses or polymorphism)
+  - wrap primitives in value objects (`ListingPrice`, `PropertyCode`, `RoomCount`)
+  - first-class collections; one dot per line; no abbreviations
+  - functions ≤ 15 lines, classes ≤ 100, modules < 200
+  - ≤ 2 instance variables per class; no public getters/setters; tell, don't ask
+- **Fixtures** in `tests/fixtures` are real pages or responses, sanitized. Don't invent them.
+- **ADRs** live in `docs/adr/`. Record architectural decisions there.
 
-### Object Calisthenics & Coding Standards (`scripts/`)
+## Gotchas
 
-Code in `scripts/` must strictly comply with Object Calisthenics:
-1. **One indent level per method**: Extract nested logic into private helper methods.
-2. **No `else` keyword**: Use guard clauses, early returns, or polymorphism exclusively.
-3. **Wrap domain primitives**: Wrap strings, numbers, and identifiers in Value Objects (`ListingPrice`, `PropertyCode`, `RoomCount`, `PageOffset`, `PriceRange`).
-4. **First-class collections**: Classes wrapping collections (`RentalListingCollection`, `FacetCollection`, `RentalSearchResult`) contain no other state.
-5. **One dot per line**: Follow Law of Demeter; assign intermediate values.
-6. **No abbreviations**: Use full descriptive names (`maximum_price`, not `max_p`; `neighborhood`, not `nh`).
-7. **Keep entities small**: Functions ≤ 15 lines, Classes ≤ 100 lines, Modules < 200 lines.
-8. **≤ 2 instance variables per class**: Decompose classes with multiple fields into focused collaborator objects.
-9. **No public getters/setters**: Expose behavior, serializers (`to_dict()`), or protocols instead of raw state.
-
-### Documentation Pointers
-
-- **Subproject Architecture & Calisthenics**: `<agency_directory>/scripts/ARCHITECTURE.md`
-- **CLI & MCP Usage**: `<agency_directory>/scripts/USAGE.md`
-- **API Specs (Single Source of Truth)**: `<agency_directory>/docs/sot/`
-- **Endpoint Research & Parameter Matrices**: `<agency_directory>/docs/api-research.md`
+- `central_mcp/.venv` is an editable install pointing at the main checkout's `src/`. In a worktree, run with `PYTHONPATH=$PWD/src` or you'll test the wrong code.
+- `git worktree remove` refuses a worktree containing a submodule. Remove the submodule directory first, after confirming it is clean and pushed.
+- `imovelweb` is marked unavailable in `capabilities.py` (it needs a real browser), so the UI lists 15 of 16 providers.
+- The New House search doesn't return condo fees. Its search-level `total_price` is therefore rent only.
+- Submodules must be public for the release workflow to clone them.
