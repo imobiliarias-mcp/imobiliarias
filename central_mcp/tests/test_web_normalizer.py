@@ -78,3 +78,22 @@ def test_cover_fallback_accepts_thumbnail_url():
 
     raw = {"thumbnail_url": "https://cdn.example.com/thumb.jpg"}
     assert normalize_cover_fallback(raw) == ("https://cdn.example.com/thumb.jpg",)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("<p>Sala ampla</p><p>Ótima localização</p>", "Sala ampla\n\nÓtima localização"),
+        ("<div>Linha 1</div><div><br></div><div>Linha 2</div>", "Linha 1\n\nLinha 2"),
+        ("Pode financiar<br>Aceita pet", "Pode financiar\nAceita pet"),
+        ("<strong>Oferta</strong> &amp; <em>promoção</em>", "Oferta & promoção"),
+        ("<script>alert(1)</script>Casa", "Casa"),
+        ("Texto   com\n\n\n\nespaços", "Texto com\n\nespaços"),
+    ],
+)
+def test_description_html_becomes_plain_text(raw, expected):
+    assert normalize_description({"description": raw}) == expected
+
+
+def test_description_html_only_yields_none():
+    assert normalize_description({"description": "<div><br></div>"}) is None

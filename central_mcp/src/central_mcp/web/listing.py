@@ -78,10 +78,13 @@ class WebListing:
 
 
 def _photos_for(projected: dict[str, Any], detail: dict[str, Any]) -> tuple[str, ...]:
-    """Prefer the detail gallery, then the search payload's own media, then its cover image."""
+    """Prefer the detail gallery, then the detail's single cover, then the search payload's media."""
     gallery = normalize_photos(detail)
     if gallery:
         return gallery
+    detail_cover = normalize_cover_fallback(detail)
+    if detail_cover:
+        return detail_cover
     raw = projected.get("raw")
     if not isinstance(raw, dict):
         return ()

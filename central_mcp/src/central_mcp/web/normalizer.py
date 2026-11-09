@@ -6,6 +6,8 @@ plain text, capped in length, and must be rendered as text (never as HTML).
 
 from __future__ import annotations
 
+import re
+from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse
 
@@ -15,6 +17,8 @@ SINGLE_MEDIA_KEYS = ("media_url", "image_url", "cover_url", "thumbnail_url")
 DESCRIPTION_KEYS = ("description", "descricao")
 MAX_DESCRIPTION_CHARS = 2000
 ALLOWED_SCHEMES = frozenset({"http", "https"})
+LINE_BREAK_TAGS = frozenset({"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6"})
+DROPPED_TAGS = frozenset({"script", "style"})
 
 
 def normalize_http_url(value: Any) -> str | None:
@@ -38,12 +42,57 @@ def normalize_photos(raw: dict[str, Any]) -> tuple[str, ...]:
 
 
 def normalize_description(raw: dict[str, Any]) -> str | None:
-    """Return the first non-blank text description, trimmed and length-capped."""
+    """Return the first non-blank description as plain text (HTML removed), length-capped."""
     for key in DESCRIPTION_KEYS:
         value = raw.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()[:MAX_DESCRIPTION_CHARS]
+        if isinstance(value, str):
+            text = html_to_text(value)
+            if text:
+                return text[:MAX_DESCRIPTION_CHARS]
     return None
+
+
+def html_to_text(value: str) -> str:
+    """Strip markup: block tags and line breaks become newlines, entities are decoded, spacing is collapsed."""
+    extractor = _TextExtractor()
+    extractor.feed(value)
+    extractor.close()
+    spaced = re.sub(r"[ \t\xa0]+", " ", extractor.text())
+    lined = re.sub(r" *\n *", "\n", spaced)
+    return re.sub(r"\n{3,}", "\n\n", lined).strip()
+
+
+class _TextExtractor(HTMLParser):
+    """Collects text nodes, turning block-level tags into line breaks and skipping scripts and styles."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._parts: list[str] = []
+        self._dropped_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in DROPPED_TAGS:
+            self._dropped_depth += 1
+        elif tag in LINE_BREAK_TAGS:
+            self._parts.append("\n")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in LINE_BREAK_TAGS:
+            self._parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in DROPPED_TAGS and self._dropped_depth > 0:
+            self._dropped_depth -= 1
+        elif tag in LINE_BREAK_TAGS:
+            self._parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self._dropped_depth == 0:
+            self._parts.append(data)
+
+    def text(self) -> str:
+        """Return the text collected so far."""
+        return "".join(self._parts)
 
 
 def _collect_photo_urls(value: Any) -> tuple[str, ...]:
