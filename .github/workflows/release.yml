@@ -1,0 +1,77 @@
+name: release
+
+# Publica a imagem do central MCP quando uma tag de versão é enviada e atualiza o serviço no Dokploy.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/imobiliarias-mcp/imobiliarias-central-mcp
+
+jobs:
+  publish-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with agency submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # Os submódulos são repositórios privados: o GITHUB_TOKEN padrão não os lê.
+          token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      - name: Build image
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and load image for audit
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: central_mcp/Dockerfile
+          build-args: GIT_SHA=${{ github.sha }}
+          tags: ${{ env.IMAGE }}:${{ github.ref_name }}
+          load: true
+
+      - name: Audit image for secrets and private files
+        run: |
+          found=$(docker run --rm --entrypoint /usr/bin/python3 "$IMAGE:$GITHUB_REF_NAME" -c \
+            "import os; [print(os.path.join(r,f)) for r,_,fs in os.walk('/') for f in fs if f.startswith('.env') or f.endswith(('.pem','.key')) or 'credentials' in f or f=='acme.json']")
+          if [ -n "$found" ]; then echo "$found"; echo "Arquivos sensíveis na imagem; publicação cancelada."; exit 1; fi
+        env:
+          IMAGE: ${{ env.IMAGE }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: central_mcp/Dockerfile
+          build-args: GIT_SHA=${{ github.sha }}
+          tags: ${{ env.IMAGE }}:${{ github.ref_name }}
+          push: true
+
+      - name: Point Dokploy service at the new tag and deploy
+        env:
+          DOKPLOY_BASE_URL: ${{ vars.DOKPLOY_BASE_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}
+          NEW_TAG: ${{ github.ref_name }}
+        run: python3 .github/scripts/dokploy_deploy.py
+
+      - name: Check public health
+        run: |
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if curl -fsS --max-time 15 https://imobiliarias.konexaplatform.xyz/healthz; then echo; exit 0; fi
+            sleep 15
+          done
+          echo "healthz não respondeu após o deploy"; exit 1
