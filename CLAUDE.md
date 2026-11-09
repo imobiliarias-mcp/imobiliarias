@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Monorepo containing reverse-engineered rental search engines, scrapers, and API clients for regional real estate agencies in Minas Gerais (focused on the Vale do Aço region: Timóteo, Coronel Fabriciano, and Ipatinga) and national real estate portals.
+Monorepo of a **modular real estate aggregator portal** for the Vale do Aço region (Timóteo, Coronel Fabriciano, and Ipatinga) and national portals. The goal is one portal that aggregates rentals from every agency. MCP is one of its interfaces, not the goal. See `docs/adr/0001-portal-agregador-modular.md`.
 
-Each agency directory operates as an independent sub-project structured as a Python package (`src/`) paired with an Object Calisthenics provider adapter (`scripts/`) designed to plug into a Central Rental Research Model Context Protocol (MCP) server.
+Each agency directory is an independent module: a Python package (`src/`) that reverse-engineers the agency's site, paired with an Object Calisthenics provider adapter (`scripts/mcp/tools.py`) that implements the fixed provider contract consumed by the core (`central_mcp/`). The core serves the web portal, an HTTP API and the MCP interface from the same services.
 
 ## Commands
 

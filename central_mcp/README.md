@@ -1,6 +1,6 @@
-# Central Rental Research MCP Server (Python)
+# Portal agregador de imobiliárias — núcleo (`central_mcp`)
 
-Servidor Model Context Protocol (MCP) central para pesquisa federada e individual de aluguéis em 16 imobiliárias e portais do Vale do Aço (Timóteo, Coronel Fabriciano, Ipatinga) e nacionais.
+Núcleo do portal agregador de aluguéis: pesquisa federada e individual em 16 imobiliárias e portais do Vale do Aço (Timóteo, Coronel Fabriciano, Ipatinga) e nacionais. O mesmo serviço expõe a interface web, a API HTTP e o MCP para agentes.
 
 Desenvolvido com o SDK oficial `mcp` (`mcp[cli]>=2.3.0`), seguindo rigorosamente os princípios de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**.
 
@@ -22,6 +22,16 @@ O servidor central é estruturado em camadas desacopladas:
 * `central_mcp.main`: Ponto de entrada CLI multi-transporte (`stdio`, `sse`, `streamable-http`, `http`).
 
 ---
+
+## 1.1 Adicionar uma imobiliária (módulo)
+
+Adicionar uma imobiliária é criar um módulo e registrá-lo. O núcleo não muda além disso:
+
+1. Criar o módulo como diretório ou submódulo, tipicamente com `src/<nome>_research/` e `scripts/mcp/tools.py`. A classe adaptadora implementa `search_rentals`, `get_property_detail`, `get_facets` e `get_provider_info`, todos retornando dicionários JSON simples.
+2. Registrar a classe em `PROVIDER_MAP` (`src/central_mcp/providers/registry.py`).
+3. Declarar os filtros suportados em `PROVIDER_CAPABILITIES` (`src/central_mcp/providers/capabilities.py`).
+4. Adicionar os `COPY` de `scripts` e `src` ao `Dockerfile` e o submódulo ao `.gitmodules`.
+5. Atualizar as contagens dos testes `tests/test_registry.py` e a documentação de provedores.
 
 ## 2. Provedores Suportados (16 Agências)
 

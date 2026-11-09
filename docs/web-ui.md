@@ -1,6 +1,6 @@
-# Webapp de busca de aluguéis (Central MCP)
+# Portal web de aluguéis (núcleo `central_mcp`)
 
-Interface web para uso pessoal: uma busca única em todas as imobiliárias, com foto de capa, preço total, descrição e link para o site oficial de cada imóvel. Roda no mesmo serviço do MCP (`central_mcp`), sem login.
+Interface web do portal agregador: uma busca única em todas as imobiliárias, com foto de capa, preço total, descrição e link para o site oficial de cada imóvel. Roda no mesmo serviço do núcleo, junto com a API HTTP e a interface MCP (`central_mcp`), sem login.
 
 ## Uso
 

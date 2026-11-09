@@ -1,11 +1,18 @@
-# Pesquisa de aluguéis — Vale do Aço
+# Portal agregador de imobiliárias — Vale do Aço
 
-Monorepo de clientes e pesquisas de APIs públicas de 16 imobiliárias e portais.
-Cada diretório mantém seu próprio pacote Python, documentação e testes.
+Portal que agrega aluguéis de imobiliárias e portais da região de Timóteo, Coronel Fabriciano e Ipatinga, com busca única, preço total, fotos e descrição. Cada imobiliária é um módulo independente, com seu próprio pacote Python, adaptador e testes.
 
-## Servidor MCP Central (Python)
+## Arquitetura modular
 
-O servidor central está implementado em Python em [`central_mcp/`](file:///home/samuelcaldas/repos/imobiliarias/central_mcp), utilizando o SDK oficial `mcp` (MCPServer / FastMCP).
+- **Núcleo** ([`central_mcp/`](central_mcp/)): agrega, normaliza, limita taxa e serve o portal. Não conhece os sites das imobiliárias.
+- **Módulos de provedor** (`<imobiliaria>/`): pacote `src/` com coleta e parsing, mais `scripts/mcp/tools.py` com o adaptador que cumpre o contrato fixo consumido pelo núcleo. Trocar ou adicionar um módulo não exige mudar o núcleo.
+- **Interfaces**: portal web (`/`), API HTTP (`/api/*`) e MCP para agentes (`/mcp`). As três consomem o mesmo núcleo.
+
+A decisão está registrada em [`docs/adr/0001-portal-agregador-modular.md`](docs/adr/0001-portal-agregador-modular.md).
+
+## Núcleo do portal (`central_mcp`, Python)
+
+O núcleo está em Python em [`central_mcp/`](central_mcp/), com o SDK oficial `mcp` (MCPServer / FastMCP) para a interface de agentes.
 
 Ele segue rigorosamente os padrões de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**, suportando múltiplos transportes (`stdio`, `sse` e `streamable-http`) e orquestrando as 16 agências com isolamento de dependências via ambientes virtuais dedicados (`.venv`).
 
