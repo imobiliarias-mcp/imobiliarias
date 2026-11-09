@@ -1,10 +1,11 @@
 name: release
 
-# Publica a imagem do central MCP quando uma tag de versão é enviada e atualiza o serviço no Dokploy.
+# Publica a imagem do central MCP quando uma tag de versão (v* ou numérica, ex.: 1.0) é enviada e atualiza o Dokploy.
 on:
   push:
     tags:
       - "v*"
+      - "[0-9]*"
 
 permissions:
   contents: read
