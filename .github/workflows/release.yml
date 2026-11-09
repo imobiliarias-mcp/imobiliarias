@@ -20,9 +20,8 @@ jobs:
       - name: Checkout with agency submodules
         uses: actions/checkout@v4
         with:
+          # Os submódulos são públicos: o GITHUB_TOKEN padrão basta para cloná-los.
           submodules: recursive
-          # Os submódulos são repositórios privados: o GITHUB_TOKEN padrão não os lê.
-          token: ${{ secrets.SUBMODULES_TOKEN }}
 
       - name: Build image
         uses: docker/setup-buildx-action@v3
