@@ -38,8 +38,10 @@ jobs:
 
       - name: Audit image for secrets and private files
         run: |
+          # Ignora bibliotecas de terceiros instaladas (site-packages, /usr): contêm arquivos com
+          # nomes como client_credentials.py e o bundle público cacert.pem, que não são segredos.
           found=$(docker run --rm --entrypoint /usr/bin/python3 "$IMAGE:$GITHUB_REF_NAME" -c \
-            "import os; [print(os.path.join(r,f)) for r,_,fs in os.walk('/') for f in fs if f.startswith('.env') or f.endswith(('.pem','.key')) or 'credentials' in f or f=='acme.json']")
+            "import os; [print(os.path.join(r,f)) for r,_,fs in os.walk('/') if not any(part in r for part in ('/site-packages', '/usr/', '/proc', '/sys')) for f in fs if f.startswith('.env') or f.endswith(('.pem','.key')) or 'credentials' in f or f=='acme.json']")
           if [ -n "$found" ]; then echo "$found"; echo "Arquivos sensíveis na imagem; publicação cancelada."; exit 1; fi
         env:
           IMAGE: ${{ env.IMAGE }}
