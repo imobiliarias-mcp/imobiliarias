@@ -1,5 +1,7 @@
 # Portal web de aluguéis (núcleo `central_mcp`)
 
+> **Legado.** A interface descrita em "Uso", "Build do frontend" e "Interface" (`central_mcp/web`) foi substituída pelo submódulo [`portal_web`](../portal_web/README.md) e não é mais embutida na imagem do núcleo (ver [ADR 0003](adr/0003-portal-web-e-modulo-comercial.md)). As seções sobre os endpoints `/api`, localização, filtros e montagem dos dados continuam valendo: é a API que o `portal_web` consome.
+
 Interface web do portal agregador: uma busca única em todas as imobiliárias, com foto de capa, preço total, descrição e link para o site oficial de cada imóvel. Roda no mesmo serviço do núcleo, junto com a API HTTP e a interface MCP (`central_mcp`), sem login.
 
 ## Uso

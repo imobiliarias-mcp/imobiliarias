@@ -13,3 +13,7 @@
 **/.superpowers
 **/.playwright-mcp
 **/.remember
+# O portal web tem imagem própria (portal_web/Dockerfile); fica fora do contexto do núcleo.
+portal_web
+**/node_modules
+**/.next
