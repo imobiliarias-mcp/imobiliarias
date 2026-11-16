@@ -39,17 +39,102 @@ services:
       CENTRAL_MCP_DATA_DIR: /data
     networks:
       - proxy
+      - internal
     labels:
       traefik.enable: "true"
       traefik.docker.network: traefik_proxy
-      traefik.http.routers.imobiliarias.rule: Host(`imobiliarias.g-vps.duckdns.org`)
+      # O núcleo recebe direto do proxy a API de leitura, o MCP e a sonda de saúde. Assim o
+      # limite de requisições continua por IP do visitante (o proxy é o único salto confiável).
+      # Todo o resto do host vai para o portal-web (roteador de prioridade menor, abaixo).
+      traefik.http.routers.imobiliarias.rule: >-
+        Host(`imobiliarias.g-vps.duckdns.org`) && (PathPrefix(`/api/providers`) || PathPrefix(`/api/locations`)
+        || PathPrefix(`/api/facets`) || PathPrefix(`/api/search`) || PathPrefix(`/api/listings`)
+        || PathPrefix(`/mcp`) || PathPrefix(`/sse`) || PathPrefix(`/messages`) || Path(`/healthz`))
+      traefik.http.routers.imobiliarias.priority: "100"
       traefik.http.routers.imobiliarias.entrypoints: websecure
       traefik.http.routers.imobiliarias.tls.certresolver: letsencrypt
       traefik.http.services.imobiliarias.loadbalancer.server.port: "8000"
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      TZ: America/Sao_Paulo
+      POSTGRES_USER: portal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: portal
+    volumes:
+      - portal-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portal -d portal"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - internal
+
+  portal-web:
+    image: ghcr.io/imobiliarias-mcp/imobiliarias-portal-web:${IMAGE_TAG:?defina IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 128
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: America/Sao_Paulo
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      CENTRAL_MCP_API_URL: http://central-mcp:8000
+      DATABASE_URL: postgresql://portal:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}@postgres:5432/portal
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?defina BETTER_AUTH_URL (URL pública do portal)}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?defina BETTER_AUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      BRAND_NAME: ${BRAND_NAME:-}
+      BRAND_SHORT_NAME: ${BRAND_SHORT_NAME:-}
+      BRAND_TAGLINE: ${BRAND_TAGLINE:-}
+      BRAND_REGION_LABEL: ${BRAND_REGION_LABEL:-}
+      BRAND_PRIMARY_COLOR: ${BRAND_PRIMARY_COLOR:-}
+      BRAND_ACCENT_COLOR: ${BRAND_ACCENT_COLOR:-}
+      BRAND_LOGO_URL: ${BRAND_LOGO_URL:-}
+      BRAND_SUPPORT_EMAIL: ${BRAND_SUPPORT_EMAIL:-}
+    networks:
+      - proxy
+      - internal
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik_proxy
+      traefik.http.routers.imobiliarias-portal.rule: Host(`imobiliarias.g-vps.duckdns.org`)
+      traefik.http.routers.imobiliarias-portal.priority: "1"
+      traefik.http.routers.imobiliarias-portal.entrypoints: websecure
+      traefik.http.routers.imobiliarias-portal.tls.certresolver: letsencrypt
+      traefik.http.services.imobiliarias-portal.loadbalancer.server.port: "3100"
+
 volumes:
   central-mcp-data:
+  portal-db:
 
 networks:
   proxy:
     external: true
     name: traefik_proxy
+  internal:

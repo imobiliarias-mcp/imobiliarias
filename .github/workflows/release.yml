@@ -1,6 +1,6 @@
 name: release
 
-# Publica a imagem do central MCP quando uma tag de versão (v*, ex.: v1.0) é enviada e atualiza o Dokploy.
+# Publica as imagens do núcleo (central MCP) e do portal web quando uma tag de versão (v*, ex.: v1.0) é enviada e atualiza o Dokploy.
 on:
   push:
     tags:
@@ -12,6 +12,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/imobiliarias-mcp/imobiliarias-central-mcp
+  PORTAL_IMAGE: ghcr.io/imobiliarias-mcp/imobiliarias-portal-web
 
 jobs:
   publish-and-deploy:
@@ -45,6 +46,22 @@ jobs:
         env:
           IMAGE: ${{ env.IMAGE }}
 
+      - name: Build and load portal image for audit
+        uses: docker/build-push-action@v6
+        with:
+          context: portal_web
+          tags: ${{ env.PORTAL_IMAGE }}:${{ github.ref_name }}
+          load: true
+
+      - name: Audit portal image for secrets and private files
+        run: |
+          # node_modules traz certificados e chaves de exemplo de bibliotecas; o que importa é o app.
+          found=$(docker run --rm --entrypoint /bin/sh "$PORTAL_IMAGE:$GITHUB_REF_NAME" -c \
+            "find /app -path /app/node_modules -prune -o -type f \( -name '.env*' -o -name '*.pem' -o -name '*.key' -o -name '*credentials*' \) -print")
+          if [ -n "$found" ]; then echo "$found"; echo "Arquivos sensíveis na imagem do portal; publicação cancelada."; exit 1; fi
+        env:
+          PORTAL_IMAGE: ${{ env.PORTAL_IMAGE }}
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -59,6 +76,13 @@ jobs:
           file: central_mcp/Dockerfile
           build-args: GIT_SHA=${{ github.sha }}
           tags: ${{ env.IMAGE }}:${{ github.ref_name }}
+          push: true
+
+      - name: Push portal image
+        uses: docker/build-push-action@v6
+        with:
+          context: portal_web
+          tags: ${{ env.PORTAL_IMAGE }}:${{ github.ref_name }}
           push: true
 
       - name: Point Dokploy service at the new tag and deploy

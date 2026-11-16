@@ -1,6 +1,6 @@
 # Portal agregador de imobiliárias — núcleo (`central_mcp`)
 
-Núcleo do portal agregador de aluguéis: pesquisa federada e individual em 16 imobiliárias e portais do Vale do Aço (Timóteo, Coronel Fabriciano, Ipatinga) e nacionais. O mesmo serviço expõe a interface web, a API HTTP e o MCP para agentes.
+Núcleo do portal agregador de aluguéis: pesquisa federada e individual em 16 imobiliárias e portais do Vale do Aço (Timóteo, Coronel Fabriciano, Ipatinga) e nacionais. O serviço expõe a API HTTP e o MCP para agentes. A interface web é o submódulo [`portal_web`](../portal_web/README.md), com imagem própria; a SPA antiga em `web/` é legado e não entra mais na imagem.
 
 Desenvolvido com o SDK oficial `mcp` (`mcp[cli]>=2.3.0`), seguindo rigorosamente os princípios de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**.
 
@@ -132,9 +132,13 @@ docker --context docker-dev build -f central_mcp/Dockerfile -t central-mcp:lates
 
 ### 5.2 Execução via Docker Compose
 
+A stack local sobe o núcleo, o portal web e o PostgreSQL. Os segredos ficam em `portal_web/.env` (veja `portal_web/.env.example`):
+
 ```bash
-docker compose -f central_mcp/compose.dev.yaml up -d
+docker compose --env-file portal_web/.env -f central_mcp/compose.dev.yaml up -d --build
 ```
+
+Portal em `http://localhost:3100`; núcleo em `http://localhost:8000`.
 
 Verifique a integridade do serviço com o probe de saúde:
 ```bash
@@ -144,6 +148,8 @@ curl -i http://127.0.0.1:8000/healthz
 ---
 
 ### 5.3 Produção em g-vps
+
+> A partir da separação do portal (ADR 0003), a imagem do núcleo não serve mais página em `/`. Antes de implantar uma tag nova, o compose de produção precisa ter os serviços `portal-web` e `postgres` e as rotas do proxy de `compose.prod.yaml`, com `POSTGRES_PASSWORD`, `BETTER_AUTH_URL` e `BETTER_AUTH_SECRET` definidos.
 
 Endpoint: `https://imobiliarias.g-vps.duckdns.org/mcp`; saúde: `/healthz`.
 O arquivo `compose.prod.yaml` utiliza a rede externa `traefik_proxy`, TLS do

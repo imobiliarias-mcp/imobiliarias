@@ -6,9 +6,10 @@ Portal que agrega aluguéis de imobiliárias e portais da região de Timóteo, C
 
 - **Núcleo** ([`central_mcp/`](central_mcp/)): agrega, normaliza, limita taxa e serve o portal. Não conhece os sites das imobiliárias.
 - **Módulos de provedor** (`<imobiliaria>/`): pacote `src/` com coleta e parsing, mais `scripts/mcp/tools.py` com o adaptador que cumpre o contrato fixo consumido pelo núcleo. Trocar ou adicionar um módulo não exige mudar o núcleo.
-- **Interfaces**: portal web (`/`), API HTTP (`/api/*`) e MCP para agentes (`/mcp`). As três consomem o mesmo núcleo.
+- **Interfaces**: API HTTP (`/api/*`) e MCP para agentes (`/mcp`), servidas pelo núcleo.
+- **Portal web** ([`portal_web/`](portal_web/), Next.js): busca pública com marca configurável por implantação e área de anunciantes (cadastro, pedidos de vínculo, administração). Consome a API do núcleo e tem banco próprio (PostgreSQL). Não é um módulo de provedor.
 
-A decisão está registrada em [`docs/adr/0001-portal-agregador-modular.md`](docs/adr/0001-portal-agregador-modular.md).
+As decisões estão em [`docs/adr/0001-portal-agregador-modular.md`](docs/adr/0001-portal-agregador-modular.md) e [`docs/adr/0003-portal-web-e-modulo-comercial.md`](docs/adr/0003-portal-web-e-modulo-comercial.md).
 
 ## Núcleo do portal (`central_mcp`, Python)
 

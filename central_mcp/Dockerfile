@@ -10,17 +10,6 @@ RUN pip install --no-cache-dir --target /install .
 # Writable data directory for the location catalog; owned by the distroless nonroot uid.
 RUN mkdir -p /data && chown 65532:65532 /data
 
-FROM node:24-slim AS web-builder
-
-WORKDIR /web
-
-COPY central_mcp/web/package.json central_mcp/web/package-lock.json ./
-RUN npm ci
-
-COPY central_mcp/web/index.html central_mcp/web/vite.config.ts central_mcp/web/tsconfig.json central_mcp/web/tsconfig.app.json ./
-COPY central_mcp/web/src ./src
-RUN npm run build
-
 FROM gcr.io/distroless/python3-debian13:nonroot
 
 WORKDIR /app
@@ -35,16 +24,15 @@ ENV CENTRAL_MCP_HOST=0.0.0.0
 ENV CENTRAL_MCP_PORT=8000
 ENV CENTRAL_MCP_REPO_ROOT=/app
 ENV PYTHONPATH=/app/site-packages:/app/central_mcp/src
-ENV CENTRAL_MCP_STATIC_DIR=/app/central_mcp/web/dist
 ENV CENTRAL_MCP_DATA_DIR=/data
 
 # Copy installed site-packages
 COPY --from=builder /install /app/site-packages
 COPY --from=builder --chown=65532:65532 /data /data
 
-# Copy central_mcp package (explicit paths keep local .venv and node_modules out of the image)
+# Copy central_mcp package (explicit paths keep local .venv and node_modules out of the image).
+# The image serves the API and MCP only: the web UI is the separate portal_web image.
 COPY central_mcp/src /app/central_mcp/src
-COPY --from=web-builder /web/dist /app/central_mcp/web/dist
 
 # Copy agency runtime code by allowlist (only existing folders)
 COPY alecorretoramg/scripts /app/alecorretoramg/scripts
