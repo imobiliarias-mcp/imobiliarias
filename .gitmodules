@@ -49,3 +49,6 @@
 [submodule "newhouseimobiliaria"]
 	path = newhouseimobiliaria
 	url = https://github.com/imobiliarias-mcp/newhouseimobiliaria.git
+[submodule "portal_web"]
+	path = portal_web
+	url = https://github.com/imobiliarias-mcp/portal-web.git
