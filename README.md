@@ -15,7 +15,7 @@ As decisões estão em [`docs/adr/0001-portal-agregador-modular.md`](docs/adr/00
 
 O núcleo está em Python em [`central_mcp/`](central_mcp/), com o SDK oficial `mcp` (MCPServer / FastMCP) para a interface de agentes.
 
-Ele segue rigorosamente os padrões de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**, suportando múltiplos transportes (`stdio`, `sse` e `streamable-http`) e orquestrando as 16 agências com isolamento de dependências via ambientes virtuais dedicados (`.venv`).
+Ele segue rigorosamente os padrões de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**, suportando múltiplos transportes (`stdio`, `sse` e `streamable-http`) e orquestrando as 17 agências com isolamento de dependências via ambientes virtuais dedicados (`.venv`).
 
 Para iniciar o servidor:
 ```bash
@@ -35,7 +35,7 @@ cd central_mcp
 ## Fontes locais
 
 Os IDs públicos correspondem aos diretórios: `alecorretoramg`,
-`arthusoimoveis`, `cabralporto`, `casalinhares`, `epifanioimoveis`,
+`arthusoimoveis`, `cabralporto`, `casalinhares`, `demarcimoveis`, `epifanioimoveis`,
 `helenaimoveis`, `imobiliariaportalmg`, `imobiliariavaleinvest`, `imovelweb`,
 `marcioimoveis`, `minascaixaimoveis`, `newhouseimobiliaria`, `niltoncorretordeimoveis`,
 `novaimobiliaria`, `veraimobiliaria` e `vivareal`.

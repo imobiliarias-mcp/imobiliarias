@@ -1,6 +1,7 @@
 """Tests for provider capability matrix and request validation."""
 
 import pytest
+
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.providers.capabilities import (
     PROVIDER_CAPABILITIES,
@@ -73,7 +74,7 @@ def test_validate_search_request_provider_list_limits():
 
 def test_validate_search_request_accepts_every_registered_provider_at_once():
     every_provider = sorted(PROVIDER_CAPABILITIES.keys())
-    assert len(every_provider) == 16
+    assert len(every_provider) == 17
     validate_search_request(providers=every_provider, known_providers=set(every_provider))
 
 
@@ -82,6 +83,15 @@ def test_newhouse_declares_the_filters_its_site_supports():
     assert capability.supported_filters == frozenset(
         {"city", "min_price", "max_price", "bedrooms", "property_type", "page"}
     )
+    assert capability.default_city == ""
+
+
+def test_demarc_declares_the_filters_its_site_supports():
+    capability = get_provider_capability("demarcimoveis")
+    assert capability.supported_filters == frozenset(
+        {"city", "max_price", "bedrooms", "page"}
+    )
+    assert capability.is_available is True
     assert capability.default_city == ""
 
 

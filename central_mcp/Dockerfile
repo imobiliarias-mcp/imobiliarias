@@ -44,6 +44,9 @@ COPY arthusoimoveis/arthuso /app/arthusoimoveis/arthuso
 COPY cabralporto/scripts /app/cabralporto/scripts
 COPY cabralporto/src /app/cabralporto/src
 
+COPY demarcimoveis/scripts /app/demarcimoveis/scripts
+COPY demarcimoveis/src /app/demarcimoveis/src
+
 COPY casalinhares/scripts /app/casalinhares/scripts
 
 COPY epifanioimoveis/scripts /app/epifanioimoveis/scripts

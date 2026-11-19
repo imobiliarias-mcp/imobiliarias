@@ -1,13 +1,15 @@
 """Unit tests for ProviderRegistry."""
 
 import pytest
+
 from central_mcp.providers.registry import ProviderRegistry
 
 
-def test_registry_contains_all_16_providers():
-    """Verify registry knows about all 16 rental providers, including New House."""
+def test_registry_contains_all_17_providers():
+    """Verify registry knows about all 17 rental providers, including Demarc."""
     registry = ProviderRegistry.create_default()
-    assert len(registry.all_provider_ids()) == 16
+    assert len(registry.all_provider_ids()) == 17
+    assert "demarcimoveis" in registry.all_provider_ids()
     assert "newhouseimobiliaria" in registry.all_provider_ids()
     assert "cabralporto" in registry.all_provider_ids()
     assert "vivareal" in registry.all_provider_ids()
@@ -19,7 +21,7 @@ def test_registry_catalog():
     """Verify catalog method produces structured provider specs."""
     registry = ProviderRegistry.create_default()
     cat = registry.catalog()
-    assert len(cat) == 16
+    assert len(cat) == 17
     cabral = cat.get("cabralporto")
     assert cabral is not None
     assert cabral.identifier.value == "cabralporto"

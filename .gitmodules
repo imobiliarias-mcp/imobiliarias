@@ -52,3 +52,6 @@
 [submodule "portal_web"]
 	path = portal_web
 	url = https://github.com/imobiliarias-mcp/portal-web.git
+[submodule "demarcimoveis"]
+	path = demarcimoveis
+	url = https://github.com/imobiliarias-mcp/demarcimoveis.git

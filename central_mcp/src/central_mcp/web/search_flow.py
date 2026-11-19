@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from central_mcp.providers.capabilities import get_provider_capability
+from central_mcp.web.first_seen_store import FirstSeenStore
 from central_mcp.web.location_catalog import LocationCatalog
 from central_mcp.web.location_scope import LocationScope, scope_results
 from central_mcp.web.locations import ParsedLocation, parse_location
@@ -36,10 +37,17 @@ class SearchOutcome:
 class SearchFlow:
     """Turns validated search parameters into the ordered listings of the whole result."""
 
-    def __init__(self, service: FederatedSource, cache: SearchOutcomeCache, locations: LocationCatalog) -> None:
+    def __init__(
+        self,
+        service: FederatedSource,
+        cache: SearchOutcomeCache,
+        locations: LocationCatalog,
+        first_seen: FirstSeenStore,
+    ) -> None:
         self._service = service
         self._cache = cache
         self._locations = locations
+        self._first_seen = first_seen
 
     async def run(self, params: Mapping[str, Any]) -> SearchOutcome:
         """Return the scoped, price-filtered and ordered listings for the validated params."""
@@ -54,13 +62,33 @@ class SearchFlow:
         scoped = scope_results(self._locate(outcome["results"]), scope, self._locations)
         priced = apply_rent_range(scoped.listings, params["min_price"], params["max_price"])
         ordered = order_by_total_price(priced, descending=params["sort"] == "total_desc")
+        annotated = self._annotate_first_seen(ordered)
         providers = [entry for entry in outcome["providers"] if is_visible_provider(entry["provider"])]
         return SearchOutcome(
             status=_overall_status([entry["status"] for entry in providers]),
             providers=providers,
-            listings=ordered,
+            listings=annotated,
             hidden_without_neighborhood=scoped.hidden_without_neighborhood,
         )
+
+    def _annotate_first_seen(self, listings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        pairs = [
+            (str(item["provider"]), str(item["code"]))
+            for item in listings
+            if item.get("provider") and item.get("code") and str(item["code"]).strip()
+        ]
+        observed = self._first_seen.observe_many(pairs)
+        return [self._with_first_seen(item, observed) for item in listings]
+
+    def _with_first_seen(
+        self, item: dict[str, Any], observed: dict[tuple[str, str], str]
+    ) -> dict[str, Any]:
+        provider = item.get("provider")
+        code = item.get("code")
+        if not provider or not code or not str(code).strip():
+            return {**item, "first_seen_at": None}
+        timestamp = observed.get((str(provider), str(code)))
+        return {**item, "first_seen_at": timestamp}
 
     def _resolved_city(self, requested: str | None) -> str | None:
         if requested is None:

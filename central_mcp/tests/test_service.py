@@ -1,6 +1,7 @@
 """Unit tests for RentalService orchestration facade and federation contract."""
 
 import pytest
+
 from central_mcp.application.service import RentalService, project_listing
 from central_mcp.errors import ProviderError, ProviderErrorCode
 from central_mcp.providers.registry import ProviderRegistry

@@ -18,6 +18,7 @@ from central_mcp.errors import ProviderError
 from central_mcp.web.cache import TtlCache
 from central_mcp.web.catalog import CachedCatalog
 from central_mcp.web.enrichment import ListingEnricher
+from central_mcp.web.first_seen_store import FirstSeenStore
 from central_mcp.web.listing import WebListing
 from central_mcp.web.location_catalog import LocationCatalog
 from central_mcp.web.result_page import take_page
@@ -51,12 +52,14 @@ class WebApi:
         catalog: CachedCatalog,
         locations: LocationCatalog,
         search: SearchFlow,
+        first_seen: FirstSeenStore,
     ) -> None:
         self._service = service
         self._enricher = enricher
         self._catalog = catalog
         self._locations = locations
         self._search = search
+        self._first_seen = first_seen
 
     async def providers(self, request: Request) -> Response:
         """List providers with coverage and supported operations (cached, off the event loop)."""
@@ -107,7 +110,9 @@ class WebApi:
             detail = await self._service.detail(provider, code)
         except (ValueError, KeyError, ProviderError) as exc:
             return _error_response(exc)
-        listing = WebListing.from_parts(_detail_projection(provider, code, detail), detail)
+        projected = _detail_projection(provider, code, detail)
+        projected["first_seen_at"] = self._first_seen.get(provider, code)
+        listing = WebListing.from_parts(projected, detail)
         return JSONResponse(listing.to_dict())
 
 
@@ -125,9 +130,10 @@ def build_web_routes(service: WebSearchService, config: AppConfig) -> WebSurface
     enricher = ListingEnricher(service, detail_cache, concurrency=config.enrich_concurrency)
     catalog = CachedCatalog(service, ttl_seconds=CATALOG_TTL_SECONDS)
     locations = LocationCatalog.open(config.data_dir)
+    first_seen = FirstSeenStore.open(config.data_dir)
     search_cache = SearchOutcomeCache(ttl_seconds=config.search_cache_ttl_seconds)
-    search = SearchFlow(service, search_cache, locations)
-    api = WebApi(service, enricher, catalog, locations, search)
+    search = SearchFlow(service, search_cache, locations, first_seen)
+    api = WebApi(service, enricher, catalog, locations, search, first_seen)
     routes: list[BaseRoute] = [
         Route("/api/providers", api.providers, methods=["GET"]),
         Route("/api/locations", api.locations, methods=["GET"]),

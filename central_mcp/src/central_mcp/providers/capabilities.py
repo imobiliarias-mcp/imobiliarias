@@ -22,13 +22,17 @@ class ProviderCapability:
 
 
 DEFAULT_CITY_FOR_CITY_REQUIRED_PROVIDERS = "Timóteo"
-# Selecting every registered provider at once (16 today) must stay valid in the UI.
+# Selecting every registered provider at once (17 today) must stay valid in the UI.
 MAX_PROVIDERS_PER_REQUEST = 20
 
 PROVIDER_CAPABILITIES: dict[str, ProviderCapability] = {
     "alecorretoramg": ProviderCapability(
         "alecorretoramg",
         frozenset({"city", "min_price", "max_price", "bedrooms", "page"}),
+    ),
+    "demarcimoveis": ProviderCapability(
+        "demarcimoveis",
+        frozenset({"city", "max_price", "bedrooms", "page"}),
     ),
     "arthusoimoveis": ProviderCapability(
         "arthusoimoveis",

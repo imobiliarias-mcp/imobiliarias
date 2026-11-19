@@ -77,7 +77,7 @@ Modules that have `tests/test_live_integration.py` hit the real agency site. Run
 ## Architecture: how a search flows
 
 1. The web routes (`web/routes.py`, through `SearchFlow`) and the MCP server (`server.py`) both use `RentalService` (`application/service.py`).
-2. `providers/capabilities.py` validates the request against the per-provider filter matrix. It also enforces `MAX_PROVIDERS_PER_REQUEST`. A provider marked `is_available=False` is not queried, which is why the UI lists 15 of 16 providers.
+2. `providers/capabilities.py` validates the request against the per-provider filter matrix. It also enforces `MAX_PROVIDERS_PER_REQUEST`. A provider marked `is_available=False` is not queried, which is why the UI lists 16 of 17 providers.
 3. `ProviderRegistry` (`providers/registry.py`, `PROVIDER_MAP`) resolves the provider id to its adapter class.
 4. `LocalVenvAdapter` (`providers/venv_adapter.py`) runs the call in a subprocess: `sys.executable -m central_mcp.worker`.
 5. The worker (`worker.py`) imports the module's `scripts/mcp/tools.py`, which reaches the module's own package (usually `src/<name>_research`) either directly or through a `scripts/providers/` layer.
@@ -127,7 +127,7 @@ Follow the checklist in `central_mcp/README.md` §1.1. In short: create the modu
 - `central_mcp/.venv` is an editable install pointing at the main checkout's `src/`. In a worktree, run with `PYTHONPATH=$PWD/src` or you'll test the wrong code.
 - The release publishes two images with one tag (core and `portal_web`). Production needs the `portal-web` and `postgres` services and the proxy routes of `central_mcp/compose.prod.yaml` before it gets a core image without the SPA, or `/` serves nothing.
 - `git worktree remove` refuses a worktree containing a submodule. Remove the submodule directory first, after confirming it is clean and pushed.
-- `imovelweb` is marked unavailable in `capabilities.py` (it needs a real browser), so the UI lists 15 of 16 providers.
+- `imovelweb` is marked unavailable in `capabilities.py` (it needs a real browser), so the UI lists 16 of 17 providers.
 - The New House search doesn't return condo fees. Its search-level `total_price` is therefore rent only.
 - Submodules must be public for the release workflow to clone them.
 - `AGENTS.md` and `GEMINI.md` are symlinks to this file. Edit `CLAUDE.md` only.

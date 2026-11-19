@@ -1,6 +1,6 @@
 # Portal agregador de imobiliárias — núcleo (`central_mcp`)
 
-Núcleo do portal agregador de aluguéis: pesquisa federada e individual em 16 imobiliárias e portais do Vale do Aço (Timóteo, Coronel Fabriciano, Ipatinga) e nacionais. O serviço expõe a API HTTP e o MCP para agentes. A interface web é o submódulo [`portal_web`](../portal_web/README.md), com imagem própria; a SPA antiga em `web/` é legado e não entra mais na imagem.
+Núcleo do portal agregador de aluguéis: pesquisa federada e individual em 17 imobiliárias e portais do Vale do Aço (Timóteo, Coronel Fabriciano, Ipatinga) e nacionais. O serviço expõe a API HTTP e o MCP para agentes. A interface web é o submódulo [`portal_web`](../portal_web/README.md), com imagem própria; a SPA antiga em `web/` é legado e não entra mais na imagem.
 
 Desenvolvido com o SDK oficial `mcp` (`mcp[cli]>=2.3.0`), seguindo rigorosamente os princípios de **Object Calisthenics**, **SOLID**, **Clean Code** e **TDD**.
 
@@ -12,7 +12,7 @@ O servidor central é estruturado em camadas desacopladas:
 
 * `central_mcp.domain`: Value Objects (`ProviderId`, `ListingPrice`, `PropertyCode`, `RoomCount`, `PageNumber`, `PublicUrl`), Entidades (`RentalListing`, `ProviderSpec`) e Coleções First-Class (`RentalListingCollection`, `ProviderCatalog`).
 * `central_mcp.providers`:
-  * `ProviderRegistry`: Gerenciamento e resolução dos 16 provedores.
+  * `ProviderRegistry`: Gerenciamento e resolução dos 17 provedores.
   * `LocalVenvAdapter` e `central_mcp.worker`: Execução de ferramentas via subprocesso isolado com protocolo JSON stdin/stdout e kill de process group em caso de timeout.
   * `capabilities`: Matriz de capacidades por provedor (`supported_filters`, checagem de limites e validação antecipada de requisições).
 * `central_mcp.limits`: Limitador de taxa Token Bucket por IP (`X-Forwarded-For` com proxies confiáveis), teto global de concorrência e throttle de concorrência 1 + intervalo mínimo por provedor.
@@ -33,27 +33,28 @@ Adicionar uma imobiliária é criar um módulo e registrá-lo. O núcleo não mu
 4. Adicionar os `COPY` de `scripts` e `src` ao `Dockerfile` e o submódulo ao `.gitmodules`.
 5. Atualizar as contagens dos testes `tests/test_registry.py` e a documentação de provedores.
 
-## 2. Provedores Suportados (16 Agências)
+## 2. Provedores Suportados (17 Agências)
 
 1. `alecorretoramg` — Alê Corretora MG (WordPress + Crocoblock)
 2. `arthusoimoveis` — Arthuso Imóveis (Kenlo / InGaia)
 3. `cabralporto` — Cabral Porto Imóveis (Tecimob Headless REST API)
 4. `casalinhares` — Casa Linhares (Imobzi API)
-5. `epifanioimoveis` — Epifânio Imóveis (ImobiBrasil)
-6. `helenaimoveis` — Helena Imóveis (ImobiBrasil)
-7. `imobiliariaportalmg` — Portal Imóveis MG (Orangeimob)
-8. `imobiliariavaleinvest` — Vale Invest (Grupo Union / BuscaImo)
-9. `imovelweb` — Imovelweb (Navent RPLIS/RPFIC) *(Requer automação com navegador/Cloudflare; reportado como `unavailable` em ambiente distroless)*
-10. `marcioimoveis` — Márcio Imóveis (WordPress + RealHomes)
-11. `minascaixaimoveis` — Minas Caixa Imóveis (Kenlo / InGaia)
-12. `newhouseimobiliaria` — New House Imobiliária (Praedium; somente aluguel em Timóteo e Coronel Fabriciano)
-13. `niltoncorretordeimoveis` — Nilton Corretor (ImobiBrasil)
-14. `novaimobiliaria` — Nova Imobiliária (Regional)
-15. `veraimobiliaria` — Vera Imobiliária (Regional)
-16. `vivareal` — Viva Real (Grupo OLX)
+5. `demarcimoveis` — Demarc Imóveis (ASP clássico / IIS 10.0; scraping HTML ISO-8859-1; filtros: cidade, preço máx, quartos; Timóteo, Coronel Fabriciano, Ipatinga)
+6. `epifanioimoveis` — Epifânio Imóveis (ImobiBrasil)
+7. `helenaimoveis` — Helena Imóveis (ImobiBrasil)
+8. `imobiliariaportalmg` — Portal Imóveis MG (Orangeimob)
+9. `imobiliariavaleinvest` — Vale Invest (Grupo Union / BuscaImo)
+10. `imovelweb` — Imovelweb (Navent RPLIS/RPFIC) *(Requer automação com navegador/Cloudflare; reportado como `unavailable` em ambiente distroless)*
+11. `marcioimoveis` — Márcio Imóveis (WordPress + RealHomes)
+12. `minascaixaimoveis` — Minas Caixa Imóveis (Kenlo / InGaia)
+13. `newhouseimobiliaria` — New House Imobiliária (Praedium; somente aluguel em Timóteo e Coronel Fabriciano)
+14. `niltoncorretordeimoveis` — Nilton Corretor (ImobiBrasil)
+15. `novaimobiliaria` — Nova Imobiliária (Regional)
+16. `veraimobiliaria` — Vera Imobiliária (Regional)
+17. `vivareal` — Viva Real (Grupo OLX)
 
 Uma requisição aceita no máximo 20 provedores (`MAX_PROVIDERS_PER_REQUEST`), então selecionar todos os
-16 de uma vez é válido. Esse limite foi ampliado de 15 para 20 ao incluir a New House.
+17 de uma vez é válido. Esse limite foi ampliado de 15 para 20 ao incluir a New House.
 
 ---
 
@@ -184,7 +185,7 @@ O procedimento completo de implantação, validação e rollback está em
 
 | Ferramenta | Descrição | Parâmetros Principais |
 | :--- | :--- | :--- |
-| `list_rental_providers` | Lista as 16 imobiliárias e portais integrados, regiões atendidas e capacidades. | Nenhum |
+| `list_rental_providers` | Lista as 17 imobiliárias e portais integrados, regiões atendidas e capacidades. | Nenhum |
 | `search_rentals` | Pesquisa imóveis em uma imobiliária específica com filtros validados. | `provider` (obrigatório), `city`, `min_price`, `max_price`, `bedrooms`, `property_type`, `page`, `limit`, `include_raw` |
 | `federated_search_rentals` | Pesquisa simultânea e federada em múltiplas imobiliárias (ou em todas). Retorna `status` (`ok`, `partial`, `error`), resumo por provedor e resultados consolidados. | `providers` (opcional), `city`, `min_price`, `max_price`, `bedrooms`, `property_type`, `page`, `limit`, `include_raw` |
 | `get_rental_detail` | Obtém detalhes completos, especificações e galeria de fotos de um imóvel. | `provider` (obrigatório), `property_code` (obrigatório) |

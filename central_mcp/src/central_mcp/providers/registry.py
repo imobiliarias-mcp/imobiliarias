@@ -12,6 +12,7 @@ from central_mcp.providers.venv_adapter import LocalVenvAdapter
 
 PROVIDER_MAP: dict[str, str] = {
     "alecorretoramg": "AleCorretoraMcpAdapter",
+    "demarcimoveis": "DemarcMcpAdapter",
     "arthusoimoveis": "ArthusoMcpAdapter",
     "cabralporto": "CabralPortoMcpAdapter",
     "casalinhares": "CasaLinharesMcpAdapter",

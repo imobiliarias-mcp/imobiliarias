@@ -1,6 +1,7 @@
 """Unit tests for Central MCP domain models and value objects."""
 
 import pytest
+
 from central_mcp.domain.collections import (
     ListingCollection,
 )

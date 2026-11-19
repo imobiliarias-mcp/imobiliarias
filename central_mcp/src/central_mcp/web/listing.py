@@ -32,6 +32,7 @@ class WebListing:
     official_url: str | None
     photos: tuple[str, ...]
     description: str | None
+    first_seen_at: str | None = None
 
     @classmethod
     def from_parts(cls, projected: dict[str, Any], detail: dict[str, Any] | None) -> WebListing:
@@ -53,6 +54,7 @@ class WebListing:
             official_url=normalize_http_url(projected.get("url")),
             photos=_photos_for(projected, media_source),
             description=normalize_description(media_source),
+            first_seen_at=projected.get("first_seen_at"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -74,6 +76,7 @@ class WebListing:
             "cover_photo": self.photos[0] if self.photos else None,
             "photos": list(self.photos),
             "description": self.description,
+            "first_seen_at": self.first_seen_at,
         }
 
 
